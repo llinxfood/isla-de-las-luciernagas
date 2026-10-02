@@ -696,25 +696,44 @@ button:active:not(:disabled) {
 }
 .plot {
   width: 100px;
-  min-height: 67px;
+  min-height: 102px;
   padding: 10px;
   border: 2px dashed #9ca886;
   border-radius: 12px;
   background: #faf7e8;
   display: flex;
-  gap: 5px;
-  align-content: center;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
 }
 .plot.planted {
   background: #dbe7c5;
   border-style: solid;
   color: #426b34;
 }
-.plot span {
-  font-size: 15px;
+.seed-group {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.seed-pattern {
+  display: block;
+  width: 100%;
+  max-height: 46px;
+  fill: #355c2a;
+}
+.seed-total {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #284b24;
+}
+.seed-total small {
+  display: block;
+  margin-top: 3px;
+  font-size: 10px;
+  font-weight: 600;
 }
 .plot .plot-plus {
   font-size: 28px;
@@ -1303,12 +1322,8 @@ button:active:not(:disabled) {
   }
   .plot {
     width: 83px;
-    min-height: 62px;
+    min-height: 94px;
     padding: 6px;
-    gap: 4px;
-  }
-  .plot span {
-    font-size: 13px;
   }
   .plots {
     gap: 7px;

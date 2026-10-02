@@ -3,6 +3,29 @@ import type { GameAction } from '../core/game';
 import type { Expedition } from '../core/model';
 import { STAGES } from '../content';
 import { Firefly } from './Artwork';
+
+function SeedPattern({ count }: { count: number }) {
+  const columns = count === 9 ? 3 : count > 5 ? Math.ceil(count / 2) : count;
+  const rows = Math.ceil(count / columns);
+  return (
+    <span className="seed-group" aria-hidden="true">
+      <svg className="seed-pattern" viewBox={`0 0 100 ${rows * 20}`}>
+        {Array.from({ length: count }, (_, index) => (
+          <circle
+            key={index}
+            cx={(100 - columns * 20) / 2 + (index % columns) * 20 + 10}
+            cy={Math.floor(index / columns) * 20 + 10}
+            r="4.5"
+          />
+        ))}
+      </svg>
+      <span className="seed-total">
+        {count} <small>{count === 1 ? 'semilla' : 'semillas'}</small>
+      </span>
+    </span>
+  );
+}
+
 function GroupGarden({
   a,
   b,
@@ -33,11 +56,7 @@ function GroupGarden({
               if (planted.length + 1 === a) onReady();
             }}
           >
-            {planted.includes(i) ? (
-              Array.from({ length: b }, (_, j) => <span key={j}>●</span>)
-            ) : (
-              <span className="plot-plus">+</span>
-            )}
+            {planted.includes(i) ? <SeedPattern count={b} /> : <span className="plot-plus">+</span>}
           </button>
         ))}
       </div>
