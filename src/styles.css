@@ -438,13 +438,23 @@ button:active:not(:disabled) {
 }
 .skip-link {
   position: fixed;
-  top: -100px;
+  top: 12px;
+  left: 12px;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
   background: white;
   z-index: 30;
-  padding: 15px;
 }
 .skip-link:focus {
-  top: 10px;
+  width: auto;
+  height: auto;
+  padding: 15px;
+  overflow: visible;
+  clip-path: none;
 }
 .save-warning {
   display: flex;
