@@ -250,3 +250,21 @@ test('recupera cuatro amigos y conserva la partida tras recargar', async ({ page
   for (const name of ['Luma', 'Pipo', 'Coral', 'Mora'])
     await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
 });
+
+test('cambia entre español e inglés y recuerda el idioma sin tocar la partida', async ({
+  page,
+}, testInfo) => {
+  await page.goto('./');
+  const before = await page.evaluate((key) => localStorage.getItem(key), key);
+  await page.getByRole('button', { name: 'Switch to English' }).click();
+  await expect(page.getByRole('heading', { name: /A little bit of magic/ })).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: `test-results/island-en-${testInfo.project.name}.png` });
+  await page.reload();
+  await page.getByRole('button', { name: "Let's explore!" }).click();
+  await expect(page.getByText('Plant the garden')).toBeVisible();
+  await page.getByRole('button', { name: 'Cambiar a español' }).click();
+  await expect(page.getByText('Siembra el jardín')).toBeVisible();
+  expect(await page.evaluate((key) => localStorage.getItem(key), key)).not.toBe(before);
+});

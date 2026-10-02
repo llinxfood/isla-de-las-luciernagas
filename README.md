@@ -4,6 +4,10 @@ Una aventura en castellano para practicar las tablas del 1 al 10. La niña da vi
 
 **React + TypeScript + Vite. Sin anuncios ni analítica.** Se puede jugar sin cuenta: la partida permanece en el navegador. Opcionalmente, una cuenta con Firebase sincroniza la partida entre dispositivos.
 
+## Idiomas
+
+Castellano por defecto. El botón **EN / ES** de la cabecera cambia a inglés y viceversa. La elección se guarda en `luciernagas.language`, separada de la partida, así que cambiar de idioma no modifica el progreso. Los textos están en `src/i18n.tsx` y los nombres y descripciones de refugios en `src/content.ts`.
+
 ## Jugar
 
 1. Pulsa **¡Vamos a explorar!** en la isla.

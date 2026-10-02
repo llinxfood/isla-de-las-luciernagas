@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { Progress } from '../core/model';
 import { recoverFirstFourFriends } from '../core/recovery';
+import { useI18n } from '../i18n';
 import {
   BACKUP_KEY,
   BEFORE_RESTORE_KEY,
@@ -31,6 +32,7 @@ export function BackupPanel({
   protectedSave: boolean;
   onRestore: (progress: Progress) => void;
 }) {
+  const { t, core } = useI18n();
   const fileInput = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<Progress | null>(null);
   const [message, setMessage] = useState('');
@@ -38,17 +40,15 @@ export function BackupPanel({
   const [reading, setReading] = useState(false);
 
   function reportError(caught: unknown) {
-    setError(caught instanceof Error ? caught.message : 'No se ha podido abrir la copia.');
+    setError(caught instanceof Error ? core(caught.message) : t.backupOpenError);
   }
   function downloadCurrent() {
     setError('');
     try {
       const raw = protectedSave ? storage.getItem(STORAGE_KEY) : createBackup(progress);
-      if (raw === null) throw new Error('No encontramos la partida original en este navegador.');
+      if (raw === null) throw new Error(t.noOriginal);
       downloadFile(raw, protectedSave ? 'original' : 'partida');
-      setMessage(
-        'Descarga solicitada. Conserva el archivo fuera del navegador para poder recuperar la partida.',
-      );
+      setMessage(t.downloadRequested);
     } catch (caught) {
       reportError(caught);
     }
@@ -59,8 +59,7 @@ export function BackupPanel({
     setMessage('');
     setReading(true);
     try {
-      if (file.size > MAX_BACKUP_BYTES)
-        throw new Error('La copia es demasiado grande. El límite es 1 MB.');
+      if (file.size > MAX_BACKUP_BYTES) throw new Error(t.tooBig);
       setPending(parseBackup(await file.text()));
     } catch (caught) {
       reportError(caught);
@@ -74,7 +73,7 @@ export function BackupPanel({
     setMessage('');
     try {
       const raw = storage.getItem(BACKUP_KEY);
-      if (raw === null) throw new Error('Todavía no hay una copia automática anterior.');
+      if (raw === null) throw new Error(t.noPrevious);
       setPending(parseBackup(raw));
     } catch (caught) {
       reportError(caught);
@@ -84,10 +83,9 @@ export function BackupPanel({
     setError('');
     try {
       const raw = storage.getItem(BEFORE_RESTORE_KEY);
-      if (raw === null)
-        throw new Error('Todavía no se ha restaurado ninguna partida en este navegador.');
+      if (raw === null) throw new Error(t.noRestoreYet);
       downloadFile(raw, 'antes-de-restaurar');
-      setMessage('Descarga solicitada de la partida anterior a la última restauración.');
+      setMessage(t.downloadBeforeRestoreDone);
     } catch (caught) {
       reportError(caught);
     }
@@ -96,11 +94,10 @@ export function BackupPanel({
     if (!pending) return;
     setError('');
     try {
-      if (!restoreProgress(storage, pending))
-        throw new Error('No se pudo guardar la restauración. La partida actual no se ha cambiado.');
+      if (!restoreProgress(storage, pending)) throw new Error(t.restoreFailed);
       onRestore(pending);
       setPending(null);
-      setMessage('Partida restaurada. Puedes cerrar Ajustes y continuar tu aventura.');
+      setMessage(t.restored);
     } catch (caught) {
       reportError(caught);
     }
@@ -112,27 +109,23 @@ export function BackupPanel({
     try {
       const recovered = recoverFirstFourFriends(progress);
       if (recovered === progress) return;
-      if (!restoreProgress(storage, recovered))
-        throw new Error('No se pudo guardar la recuperación. La partida actual no se ha cambiado.');
+      if (!restoreProgress(storage, recovered)) throw new Error(t.recoverFailed);
       onRestore(recovered);
-      setMessage('Luma, Pipo, Coral y Mora están disponibles. Puedes cerrar Ajustes.');
+      setMessage(t.recovered);
     } catch (caught) {
       reportError(caught);
     }
   }
   return (
     <section className="backup-panel" aria-labelledby="backup-title">
-      <h3 id="backup-title">Copia de tu aventura</h3>
-      <p>
-        Las actualizaciones conservan la partida de este navegador. Guarda también un archivo para
-        recuperarla si cambias de dispositivo o borras sus datos.
-      </p>
+      <h3 id="backup-title">{t.backupTitle}</h3>
+      <p>{t.backupIntro}</p>
       <div className="backup-actions">
         <button className="secondary" onClick={downloadCurrent}>
-          {protectedSave ? 'Descargar partida original' : 'Descargar copia'}
+          {protectedSave ? t.downloadOriginal : t.downloadCopy}
         </button>
         <button className="secondary" disabled={reading} onClick={() => fileInput.current?.click()}>
-          Abrir una copia
+          {t.openCopy}
         </button>
       </div>
       <input
@@ -140,7 +133,7 @@ export function BackupPanel({
         className="backup-file-input"
         type="file"
         accept=".json,application/json"
-        aria-label="Archivo de copia de seguridad"
+        aria-label={t.backupFile}
         onChange={(event) => {
           const file = event.target.files?.[0];
           event.target.value = '';
@@ -148,63 +141,46 @@ export function BackupPanel({
         }}
       />
       <details className="backup-recovery">
-        <summary>Recuperar una partida anterior</summary>
-        <p>
-          Las copias automáticas viven en este navegador. También se borran si eliminas sus datos.
-        </p>
+        <summary>{t.recoverPrevious}</summary>
+        <p>{t.autoCopiesNote}</p>
         <button className="text-button" disabled={reading} onClick={openPrevious}>
-          Ver copia automática anterior
+          {t.viewPrevious}
         </button>
         <button className="text-button" onClick={downloadBeforeRestore}>
-          Descargar partida previa a la restauración
+          {t.downloadBeforeRestore}
         </button>
       </details>
       <details className="backup-recovery">
-        <summary>Recuperar cuatro amigos sin copia</summary>
-        <p>
-          Desbloquea a Luma, Pipo, Coral y Mora en este dispositivo. Conserva los demás amigos, las
-          operaciones practicadas y la aventura en curso. No añade aciertos ni luces. Guardaremos
-          una copia de la partida actual antes de cambiarla.
-        </p>
-        {protectedSave && <p>Primero recupera la partida original con una copia compatible.</p>}
+        <summary>{t.recoverFour}</summary>
+        <p>{t.recoverFourText}</p>
+        {protectedSave && <p>{t.recoverOriginalFirst}</p>}
         <button
           className="secondary"
           disabled={protectedSave || reading || !!pending || progress.completed.length >= 4}
           onClick={recoverFriends}
         >
-          {progress.completed.length >= 4
-            ? 'Ya tienes los cuatro amigos'
-            : 'Recuperar los cuatro amigos'}
+          {progress.completed.length >= 4 ? t.haveFour : t.recoverFourButton}
         </button>
       </details>
       {pending && (
         <div className="backup-preview">
-          <h4>Revisa la copia antes de restaurar</h4>
-          <p>
-            {pending.missions} expediciones · {pending.completed.length} refugios · {pending.lights}{' '}
-            luces
-          </p>
+          <h4>{t.reviewCopy}</h4>
+          <p>{t.copySummary(pending.missions, pending.completed.length, pending.lights)}</p>
           {pending.expedition && (
-            <p>
-              Aventura en curso: tabla del {pending.expedition.table}, reto{' '}
-              {pending.expedition.index + 1} de 24.
-            </p>
+            <p>{t.copyInProgress(pending.expedition.table, pending.expedition.index + 1)}</p>
           )}
-          <p>
-            Esta copia sustituirá la partida de este navegador. Guardaremos la actual antes de
-            cambiarla.
-          </p>
+          <p>{t.copyReplaces}</p>
           <div className="backup-actions">
             <button className="primary" onClick={confirmRestore}>
-              Restaurar esta copia
+              {t.restoreThis}
             </button>
             <button className="secondary" onClick={() => setPending(null)}>
-              Cancelar
+              {t.cancel}
             </button>
           </div>
         </div>
       )}
-      <p role="status">{reading ? 'Leyendo copia…' : message}</p>
+      <p role="status">{reading ? t.readingCopy : message}</p>
       {error && (
         <p className="backup-error" role="alert">
           {error}

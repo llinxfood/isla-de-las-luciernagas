@@ -129,6 +129,20 @@ button:active:not(:disabled) {
   border-left: 1px solid var(--line);
   border-radius: 0;
 }
+.language-button {
+  min-width: 48px;
+  min-height: 48px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  background: transparent;
+  border: 2px solid var(--line);
+  border-radius: 30px;
+  margin-left: 8px;
+}
+.account-screen > .language-button {
+  float: right;
+}
 .eyebrow {
   display: block;
   font-size: 10px;
@@ -1528,4 +1542,14 @@ html[data-motion='off'] *::after {
 .account-dialog > .text-button {
   display: block;
   margin-top: 12px;
+}
+@media (max-width: 480px) {
+  /* Room for the language button: the star mark alone still leads home. */
+  .brand > span:not(.brand-mark) {
+    display: none;
+  }
+  .language-button {
+    min-width: 42px;
+    margin-left: 0;
+  }
 }

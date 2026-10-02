@@ -12,27 +12,26 @@ import { freshProgress } from '../core/model';
 import { loadProgress, restoreProgress, STORAGE_KEY } from '../core/storage';
 import { rememberCloudSession } from './config';
 import { cloudFor, firebaseServices } from './firebase';
+import { LanguageToggle, useI18n, type TextKey } from '../i18n';
 import { GuestBar } from './GuestBar';
 import { accountStorage, SyncSession } from './sync';
 
-function authMessage(error: unknown) {
+function authMessage(error: unknown): TextKey {
   const code = (error as { code?: string })?.code;
   if (code === 'auth/weak-password' || code === 'auth/password-does-not-meet-requirements')
-    return 'Elige una contraseña más larga y segura.';
-  if (code === 'auth/email-already-in-use')
-    return 'Este correo ya tiene una cuenta. Pulsa Entrar o recupera la contraseña.';
-  if (code === 'auth/invalid-email') return 'Revisa el correo electrónico.';
-  if (code === 'auth/invalid-credential') return 'Revisa el correo y la contraseña.';
-  if (code === 'auth/operation-not-allowed')
-    return 'Las cuentas todavía no están activadas. Puedes seguir jugando sin cuenta.';
-  if (code === 'auth/too-many-requests')
-    return 'Ha habido muchos intentos. Espera un poco antes de volver a probar.';
-  return 'No se ha podido conectar. Revisa la conexión y vuelve a intentarlo.';
+    return 'authWeak';
+  if (code === 'auth/email-already-in-use') return 'authInUse';
+  if (code === 'auth/invalid-email') return 'authEmail';
+  if (code === 'auth/invalid-credential') return 'authCredential';
+  if (code === 'auth/operation-not-allowed') return 'authDisabled';
+  if (code === 'auth/too-many-requests') return 'authTooMany';
+  return 'authNetwork';
 }
 export default function CloudGame({ openLogin }: { openLogin: boolean }) {
   const [user, setUser] = useState<User | null | undefined>(undefined);
+  const { t } = useI18n();
   const [open, setOpen] = useState(openLogin);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<TextKey | null>(null);
   useEffect(
     () =>
       onAuthStateChanged(
@@ -41,7 +40,7 @@ export default function CloudGame({ openLogin }: { openLogin: boolean }) {
           setUser(next);
           rememberCloudSession(next !== null);
         },
-        () => setError('No se pudo comprobar la cuenta. Recarga para reintentar.'),
+        () => setError('authCheckFailed'),
       ),
     [],
   );
@@ -56,12 +55,12 @@ export default function CloudGame({ openLogin }: { openLogin: boolean }) {
     <>
       {error && (
         <p role="alert" className="save-warning">
-          {error}
+          {t[error]}
         </p>
       )}
       {user === undefined ? (
         <div className="account-screen">
-          <h1>Buscando tu isla…</h1>
+          <h1>{t.searching}</h1>
         </div>
       ) : user ? (
         <SignedGame key={user.uid} user={user} onLogout={logout} />
@@ -73,28 +72,27 @@ export default function CloudGame({ openLogin }: { openLogin: boolean }) {
   );
 }
 function LoginDialog({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n();
   const dialog = useRef<HTMLDialogElement>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [register, setRegister] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
+  const [error, setError] = useState<TextKey | null>(null);
+  const [sent, setSent] = useState(false);
   useEffect(() => {
     dialog.current?.showModal();
   }, []);
   async function submit(reset = false) {
     if (busy) return;
     setBusy(true);
-    setError('');
-    setMessage('');
+    setError(null);
+    setSent(false);
     try {
       const auth = firebaseServices().auth;
       if (reset) {
         await sendPasswordResetEmail(auth, email.trim());
-        setMessage(
-          'Si existe una cuenta con ese correo, recibirás las instrucciones para recuperar el acceso.',
-        );
+        setSent(true);
       } else {
         await (register ? createUserWithEmailAndPassword : signInWithEmailAndPassword)(
           auth,
@@ -112,12 +110,12 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
   return (
     <dialog ref={dialog} className="settings-dialog account-dialog" onCancel={onClose}>
       <div className="dialog-heading">
-        <h2>{register ? 'Crea tu cuenta de la isla' : 'Vuelve a tu isla'}</h2>
-        <button aria-label="Cerrar acceso" onClick={onClose}>
+        <h2>{register ? t.createTitle : t.loginTitle}</h2>
+        <button aria-label={t.closeLogin} onClick={onClose}>
           ×
         </button>
       </div>
-      <p>Una cuenta guarda una aventura. Usa el mismo acceso en todos tus dispositivos.</p>
+      <p>{t.oneAccount}</p>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -125,7 +123,7 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
         }}
       >
         <label>
-          Correo para recuperar el acceso
+          {t.emailLabel}
           <input
             type="email"
             autoComplete="email"
@@ -135,7 +133,7 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
           />
         </label>
         <label>
-          Contraseña
+          {t.passwordLabel}
           <input
             type="password"
             minLength={register ? 10 : undefined}
@@ -145,14 +143,9 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
             onChange={(e) => setPassword(e.target.value)}
           />
         </label>
-        {register && (
-          <p>
-            Al crear la cuenta, el correo y la partida se guardarán en Firebase para sincronizarlos.
-            No pedimos nombre real ni edad. Sin anuncios ni analítica.
-          </p>
-        )}
+        {register && <p>{t.createNotice}</p>}
         <button className="primary" disabled={busy}>
-          {busy ? 'Conectando…' : register ? 'Crear mi cuenta' : 'Entrar'}
+          {busy ? t.connecting : register ? t.createButton : t.loginButton}
         </button>
       </form>
       <button
@@ -160,45 +153,43 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
         disabled={busy}
         onClick={() => {
           setRegister(!register);
-          setError('');
+          setError(null);
         }}
       >
-        {register ? 'Ya tengo cuenta' : 'Crear una cuenta'}
+        {register ? t.haveAccount : t.createAccount}
       </button>
       <button
         className="text-button"
         disabled={busy || !email.trim()}
         onClick={() => void submit(true)}
       >
-        He olvidado mi contraseña
+        {t.forgot}
       </button>
-      {error && <p role="alert">{error}</p>}
-      {message && <p role="status">{message}</p>}
+      {error && <p role="alert">{t[error]}</p>}
+      {sent && <p role="status">{t.resetSent}</p>}
     </dialog>
   );
 }
 function SignedGame({ user, onLogout }: { user: User; onLogout: () => Promise<void> }) {
+  const { t } = useI18n();
   const storage = useMemo(() => accountStorage(window.localStorage, user.uid), [user.uid]);
-  const [setup] = useState(() => {
+  const [session] = useState(() => {
     try {
-      return { session: new SyncSession(storage, cloudFor(user.uid)), error: '' };
+      return new SyncSession(storage, cloudFor(user.uid));
     } catch {
-      return {
-        session: null,
-        error: 'No se puede abrir la copia local de esta cuenta. Sus datos se han conservado.',
-      };
+      return null;
     }
   });
-  if (!setup.session)
+  if (!session)
     return (
       <div className="account-screen">
-        <p role="alert">{setup.error}</p>
+        <p role="alert">{t.localOpenFailed}</p>
         <button className="secondary" onClick={() => void onLogout()}>
-          Volver sin cuenta
+          {t.backNoAccount}
         </button>
       </div>
     );
-  return <SyncedGame session={setup.session} storage={storage} onLogout={onLogout} />;
+  return <SyncedGame session={session} storage={storage} onLogout={onLogout} />;
 }
 function SyncedGame({
   session,
@@ -209,8 +200,9 @@ function SyncedGame({
   storage: ReturnType<typeof accountStorage>;
   onLogout: () => Promise<void>;
 }) {
+  const { t, core } = useI18n();
   const state = useSyncExternalStore(session.subscribe, session.getSnapshot);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<TextKey | null>(null);
   useEffect(() => {
     void session.start();
     const refresh = () => {
@@ -230,7 +222,7 @@ function SyncedGame({
     try {
       await session.resolve(choice);
     } catch {
-      setError('No se pudo guardar la elección. Las dos partidas siguen conservadas.');
+      setError('choiceFailed');
     }
   }
   function begin(importGuest: boolean) {
@@ -241,66 +233,60 @@ function SyncedGame({
         throw new Error();
       session.changed();
     } catch {
-      setError(
-        'No se pudo preparar la partida. Descarga primero una copia desde el modo sin cuenta.',
-      );
+      setError('prepareFailed');
     }
   }
   const hasLocal = storage.getItem(STORAGE_KEY) !== null;
   const blocked = state.status === 'loading' || state.status === 'conflict' || !hasLocal;
   const controls = (
     <div className="account-bar">
-      <span role="status">{state.message}</span>
+      <span role="status">{core(state.message)}</span>
       <button className="text-button" onClick={() => void session.sync()}>
-        Sincronizar ahora
+        {t.syncNow}
       </button>
       <button className="text-button" onClick={() => void onLogout()}>
-        Cerrar sesión
+        {t.signOut}
       </button>
     </div>
   );
   if (blocked)
     return (
       <div className="account-screen">
-        <h1>Tu isla viaja contigo</h1>
-        <p role="status">{state.message}</p>
+        <LanguageToggle />
+        <h1>{t.travelsTitle}</h1>
+        <p role="status">{core(state.message)}</p>
         {state.status === 'conflict' && (
           <>
-            <p>
-              Se han conservado las dos versiones. La elegida será la que continúe en tus
-              dispositivos.
-            </p>
+            <p>{t.bothKept}</p>
             <div className="backup-actions">
               <button className="secondary" onClick={() => void choose('local')}>
-                Continuar la de este dispositivo (
-                {JSON.parse(storage.getItem(STORAGE_KEY)!).completed.length} amigos)
+                {t.keepLocal(JSON.parse(storage.getItem(STORAGE_KEY)!).completed.length)}
               </button>
               <button className="secondary" onClick={() => void choose('remote')}>
-                Continuar la de la nube ({JSON.parse(state.remote!.payload).completed.length}{' '}
-                amigos)
+                {t.keepRemote(JSON.parse(state.remote!.payload).completed.length)}
               </button>
             </div>
           </>
         )}
         {!hasLocal && state.status === 'saved' && (
           <>
-            <p>Esta cuenta todavía no tiene partida. Puedes llevarte la que ya tienes aquí.</p>
+            <p>{t.noSaveYet}</p>
             <button className="primary" onClick={() => begin(true)}>
-              Llevar mi partida a esta cuenta
+              {t.bringSave}
             </button>
             <button className="secondary" onClick={() => begin(false)}>
-              Empezar una isla nueva
+              {t.newIsland}
             </button>
           </>
         )}
         {state.status === 'error' && (
           <button className="secondary" onClick={() => void session.sync()}>
-            Reintentar
+            {t.retry}
           </button>
         )}
-        {error && <p role="alert">{error}</p>}
+        {error && <p role="alert">{t[error]}</p>}
         <button className="text-button" onClick={() => void onLogout()}>
-          Volver sin cuenta
+          {t.backNoAccount}
         </button>
       </div>
     );

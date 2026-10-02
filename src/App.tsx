@@ -11,18 +11,14 @@ import { hardestFacts, loadProgress, saveProgress } from './core/storage';
 import { Creature, Firefly, IslandArt } from './components/Artwork';
 import { BackupPanel } from './components/BackupPanel';
 import { Challenge } from './components/Challenge';
-import { DECORATIONS, REFUGES, STAGES } from './content';
+import { DECORATION_ICONS, type DecorationKey } from './content';
+import { LanguageToggle, useI18n } from './i18n';
 type StoragePort = Pick<Storage, 'getItem' | 'setItem'>;
 function initialState(storage: StoragePort) {
   try {
     return loadProgress(storage);
   } catch {
-    return {
-      progress: freshProgress(),
-      protectedSave: false,
-      warning:
-        'No se puede guardar en este navegador. Puedes jugar mientras esta pestaña siga abierta.',
-    };
+    return { progress: freshProgress(), protectedSave: false, warning: 'no-storage' };
   }
 }
 export default function App({
@@ -36,6 +32,7 @@ export default function App({
   accountControls?: ReactNode;
   cloudAccount?: boolean;
 }) {
+  const { t, content, core } = useI18n();
   const [initial] = useState(() => initialState(storage));
   const [progress, dispatch] = useReducer(gameReducer, initial.progress);
   const [screen, setScreen] = useState<'island' | 'collection' | 'game'>('island');
@@ -43,7 +40,7 @@ export default function App({
   const [selected, setSelected] = useState(
     () => initial.progress.expedition?.table ?? unlockedTables(initial.progress).at(-1)!,
   );
-  const [decoration, setDecoration] = useState<keyof typeof DECORATIONS>('flowers');
+  const [decoration, setDecoration] = useState<DecorationKey>('flowers');
   const [warning, setWarning] = useState(initial.warning);
   const [protectedSave, setProtectedSave] = useState(initial.protectedSave);
   const [visited, setVisited] = useState<number | null>(null);
@@ -59,12 +56,7 @@ export default function App({
     }
     if (saved) onSaved?.();
     // A synchronous storage failure must be visible even when the browser offers no storage events.
-    if (!saved)
-      setWarning(
-        (current) =>
-          current ??
-          'Puedes seguir jugando, pero no podemos guardar. Descarga una copia desde Ajustes → Para acompañantes antes de cerrar.',
-      );
+    if (!saved) setWarning((current) => current ?? 'save-failed');
   }, [progress, storage, onSaved]);
   useEffect(() => {
     document.documentElement.dataset.motion = progress.settings.motion ? 'on' : 'off';
@@ -100,7 +92,7 @@ export default function App({
   }
   const unlocked = unlockedTables(progress);
   const refugeIndex = TABLE_ORDER.indexOf(selected as (typeof TABLE_ORDER)[number]);
-  const refuge = REFUGES[refugeIndex];
+  const refuge = content.refuges[refugeIndex];
   const expedition = progress.expedition;
   const isPlaying = screen === 'game' && expedition;
   function start() {
@@ -110,36 +102,37 @@ export default function App({
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main">
-        Saltar al contenido
+        {t.skip}
       </a>
       <header className="site-header">
-        <button className="brand" onClick={() => setScreen('island')} aria-label="Ir a mi isla">
+        <button className="brand" onClick={() => setScreen('island')} aria-label={t.goHome}>
           <span className="brand-mark">✦</span>
           <span>
-            la isla de las
+            {t.brandTop}
             <br />
-            <strong>luciérnagas</strong>
+            <strong>{t.brandBottom}</strong>
           </span>
         </button>
-        <nav aria-label="Navegación principal">
+        <nav aria-label={t.mainNav}>
           <button
             className={screen === 'island' ? 'nav-active' : ''}
             onClick={() => setScreen('island')}
           >
-            ⌂ <span>Mi isla</span>
+            ⌂ <span>{t.myIsland}</span>
           </button>
           <button
             className={screen === 'collection' ? 'nav-active' : ''}
             onClick={() => setScreen('collection')}
           >
-            ♧ <span>Mis amigos</span>
+            ♧ <span>{t.myFriends}</span>
             <span className="nav-count">{progress.completed.length}/10</span>
           </button>
         </nav>
+        <LanguageToggle />
         <button
           ref={settingsButton}
           className="settings-button"
-          aria-label="Ajustes"
+          aria-label={t.settings}
           onClick={() => setSettings(true)}
         >
           ⚙
@@ -147,8 +140,12 @@ export default function App({
       </header>
       {warning && (
         <div className="save-warning" role="alert">
-          {warning}
-          <button aria-label="Cerrar aviso" onClick={() => setWarning(null)}>
+          {warning === 'no-storage'
+            ? t.noStorage
+            : warning === 'save-failed'
+              ? t.saveFailed
+              : core(warning)}
+          <button aria-label={t.closeWarning} onClick={() => setWarning(null)}>
             ×
           </button>
         </div>
@@ -160,67 +157,61 @@ export default function App({
             <section className="island-hero">
               <div className="hero-copy">
                 <span className="eyebrow">
-                  <span className="tiny-star">✦</span> UNA PEQUEÑA GRAN AVENTURA
+                  <span className="tiny-star">✦</span> {t.eyebrowHero}
                 </span>
                 <h1>
-                  Un poquito de magia.
+                  {t.heroTitle}
                   <br />
-                  <em>Un mundo por descubrir.</em>
+                  <em>{t.heroTitleEm}</em>
                 </h1>
                 <p>
-                  Multiplica, enciende luces y encuentra
-                  <br className="desktop-break" /> nuevos amigos. Tu isla te espera.
+                  {t.heroText1}
+                  <br className="desktop-break" />
+                  {t.heroText2}
                 </p>
                 <div className="luma-message">
                   <Firefly />
                   <p>
-                    ¡Hola! Soy Luma.
+                    {t.lumaHello}
                     <br />
-                    <strong>
-                      {progress.missions
-                        ? '¿Seguimos nuestra aventura?'
-                        : '¿Me ayudas a iluminar la isla?'}
-                    </strong>
+                    <strong>{progress.missions ? t.lumaContinue : t.lumaStart}</strong>
                   </p>
                 </div>
                 <button className="primary hero-cta" onClick={start}>
                   {expedition
-                    ? 'Continuar mi aventura'
+                    ? t.ctaContinue
                     : progress.completed.includes(selected)
-                      ? 'Volver a explorar'
-                      : '¡Vamos a explorar!'}{' '}
+                      ? t.ctaReplay
+                      : t.ctaStart}{' '}
                   <span>→</span>
                 </button>
                 <span className="session-note">
-                  3 pequeños tramos · a tu ritmo ·{' '}
-                  {cloudAccount ? 'con copia en tu cuenta' : 'se guarda aquí'}
+                  {t.sessionNote} {cloudAccount ? t.savedCloud : t.savedHere}
                 </span>
                 {expedition && (
-                  <span className="session-note">
-                    Aventura en curso: tabla del {expedition.table}
-                  </span>
+                  <span className="session-note">{t.inProgress(expedition.table)}</span>
                 )}
               </div>
               <div className="map-art">
                 <div className="map-tag">
-                  <span className="live-dot" /> TU ISLA ESTÁ DESPERTANDO
+                  <span className="live-dot" /> {t.islandWaking}
                 </div>
                 <IslandArt
                   restored={progress.completed.length}
                   decorations={progress.decorations}
                 />
-                <span className="floating-label label-home">⌂ El claro de Luma</span>
-                <span className="floating-label label-mountain">✦ La cima estrellada</span>
-                <span className="map-caption">Cada luz cuenta. Cada aventura también.</span>
+                <span className="floating-label label-home">⌂ {content.refuges[0].name}</span>
+                <span className="floating-label label-mountain">✦ {content.refuges[9].name}</span>
+                <span className="map-caption">{t.mapCaption}</span>
               </div>
             </section>
             <section className="trail-section" aria-labelledby="trail-title">
               <div className="section-heading">
                 <div>
-                  <span className="eyebrow">EL MAPA DE TU AVENTURA</span>
-                  <h2 id="trail-title">Diez refugios. Muchos descubrimientos.</h2>
+                  <span className="eyebrow">{t.mapEyebrow}</span>
+                  <h2 id="trail-title">{t.mapTitle}</h2>
                 </div>
-                <span className="progress-pill">✦ {progress.completed.length} de 10 refugios</span>
+                <span className="progress-pill">✦ {t.refugeCount(progress.completed.length)}</span>
               </div>
               <div className="refuge-trail">
                 {TABLE_ORDER.map((table, i) => {
@@ -232,7 +223,11 @@ export default function App({
                       className={`refuge-node ${selected === table ? 'selected' : ''} ${done ? 'complete' : ''}`}
                       disabled={!open}
                       onClick={() => setSelected(table)}
-                      aria-label={`${REFUGES[i].name}, tabla del ${table}, ${done ? 'descubierto' : open ? 'disponible' : 'por descubrir'}`}
+                      aria-label={t.refugeLabel(
+                        content.refuges[i].name,
+                        table,
+                        done ? 'done' : open ? 'open' : 'locked',
+                      )}
                       aria-pressed={selected === table}
                     >
                       <span className="node-circle">
@@ -250,9 +245,7 @@ export default function App({
                         )}
                         {done && <small>✓</small>}
                       </span>
-                      <span className="node-name">
-                        {i === 0 ? 'El claro' : REFUGES[i].name.replace(/^(El |La |Las )/, '')}
-                      </span>
+                      <span className="node-name">{content.refuges[i].short}</span>
                     </button>
                   );
                 })}
@@ -263,40 +256,34 @@ export default function App({
                 </div>
                 <div>
                   <span className="eyebrow">
-                    {progress.completed.includes(selected)
-                      ? 'UN LUGAR AL QUE VOLVER'
-                      : 'TU PRÓXIMO DESCUBRIMIENTO'}{' '}
-                    · TABLA DEL {selected}
+                    {progress.completed.includes(selected) ? t.revisit : t.nextDiscovery} ·{' '}
+                    {t.tableCaps(selected)}
                   </span>
                   <h3>{refuge.name}</h3>
                   <p>
                     {progress.completed.includes(selected)
-                      ? `${refuge.creature} te espera para seguir practicando.`
-                      : `Prepara el jardín, cruza el río y descubre a ${refuge.creature}.`}
+                      ? t.waitsForYou(refuge.creature)
+                      : t.discover(refuge.creature)}
                   </p>
                 </div>
                 <button className="secondary" onClick={start}>
-                  {expedition ? 'Continuar partida' : 'Explorar'} →
+                  {expedition ? t.continueGame : t.explore} →
                 </button>
               </div>
             </section>
             <footer className="island-footer">
-              <span>✧ Sin prisas. Con muchas ganas.</span>
-              <span>
-                {cloudAccount
-                  ? 'Tu aventura viaja contigo.'
-                  : 'Tu aventura se guarda en este dispositivo.'}
-              </span>
+              <span>✧ {t.footerCalm}</span>
+              <span>{cloudAccount ? t.footerCloud : t.footerLocal}</span>
             </footer>
           </>
         )}
         {screen === 'collection' && (
           <section className="collection">
-            <span className="eyebrow">LOS HABITANTES DE TU ISLA</span>
-            <h1>Una pandilla con mucha luz.</h1>
-            <p>Visita a tus amigos y descubre sus pequeñas historias.</p>
+            <span className="eyebrow">{t.collectionEyebrow}</span>
+            <h1>{t.collectionTitle}</h1>
+            <p>{t.collectionText}</p>
             <div className="collection-grid">
-              {REFUGES.map((friend, i) => {
+              {content.refuges.map((friend, i) => {
                 const table = TABLE_ORDER[i];
                 const found = progress.completed.includes(table);
                 const decor = progress.decorations[table];
@@ -312,13 +299,13 @@ export default function App({
                     aria-expanded={visited === table}
                   >
                     {found ? <Creature index={i} /> : <span className="mystery">?</span>}
-                    <h2>{found ? friend.creature : '¿Quién vivirá aquí?'}</h2>
-                    <span className="friend-table">Tabla del {table}</span>
+                    <h2>{found ? friend.creature : t.whoLivesHere}</h2>
+                    <span className="friend-table">{t.table(table)}</span>
                     {found && (
                       <p>
                         {visited === table
                           ? friend.description
-                          : `${DECORATIONS[decor ?? 'flowers'].icon} ${DECORATIONS[decor ?? 'flowers'].label} en su refugio · Toca para visitar`}
+                          : `${DECORATION_ICONS[decor ?? 'flowers']} ${t.inRefuge(content.decorations[decor ?? 'flowers'])}`}
                       </p>
                     )}
                   </button>
@@ -327,7 +314,7 @@ export default function App({
             </div>
             {!progress.completed.length && (
               <button className="primary" onClick={start}>
-                Descubrir a mi primer amigo →
+                {t.firstFriend} →
               </button>
             )}
           </section>
@@ -336,12 +323,12 @@ export default function App({
           <section className="expedition">
             <div className="expedition-heading">
               <button className="text-button" onClick={() => setScreen('island')}>
-                ← Volver a mi isla
+                {t.backToIsland}
               </button>
-              <span>✦ {expedition.lights} luces</span>
+              <span>✦ {t.lights(expedition.lights)}</span>
             </div>
             <div className="stage-tabs">
-              {STAGES.map((stage, i) => (
+              {content.stages.map((stage, i) => (
                 <div
                   key={stage.name}
                   className={Math.floor(expedition.index / 8) === i ? 'current' : ''}
@@ -362,18 +349,18 @@ export default function App({
             {expedition.phase === 'break' && (
               <div className="milestone">
                 <Firefly happy />
-                <span className="eyebrow">8 PASOS MÁS EN TU AVENTURA</span>
-                <h1>{STAGES[Math.floor(expedition.index / 8)].done}</h1>
-                <p>{STAGES[Math.floor(expedition.index / 8)].next}</p>
-                <p className="rest-note">Estira los brazos, respira… ¡Lo estás haciendo genial!</p>
+                <span className="eyebrow">{t.breakEyebrow}</span>
+                <h1>{content.stages[Math.floor(expedition.index / 8)].done}</h1>
+                <p>{content.stages[Math.floor(expedition.index / 8)].next}</p>
+                <p className="rest-note">{t.stretch}</p>
                 <button
                   className="primary"
                   onClick={() => dispatch({ type: 'continue', now: Date.now() })}
                 >
-                  Vamos al siguiente tramo →
+                  {t.nextLeg} →
                 </button>
                 <button className="text-button" onClick={() => setScreen('island')}>
-                  Seguiré otro día · Guardar y salir
+                  {t.saveAndExit}
                 </button>
               </div>
             )}
@@ -382,26 +369,26 @@ export default function App({
                 <Creature
                   index={TABLE_ORDER.indexOf(expedition.table as (typeof TABLE_ORDER)[number])}
                 />
-                <span className="eyebrow">¡UN REFUGIO LLENO DE VIDA!</span>
+                <span className="eyebrow">{t.rewardEyebrow}</span>
                 <h1>
-                  {
-                    REFUGES[TABLE_ORDER.indexOf(expedition.table as (typeof TABLE_ORDER)[number])]
-                      .creature
-                  }{' '}
-                  tiene un hogar.
+                  {t.hasHome(
+                    content.refuges[
+                      TABLE_ORDER.indexOf(expedition.table as (typeof TABLE_ORDER)[number])
+                    ].creature,
+                  )}
                 </h1>
-                <p>Has encendido {expedition.lights} luces. Elige algo bonito para su refugio.</p>
+                <p>{t.litLights(expedition.lights)}</p>
                 <div className="decoration-choices">
-                  {Object.entries(DECORATIONS).map(([key, item]) => (
+                  {Object.entries(DECORATION_ICONS).map(([key, icon]) => (
                     <button
                       key={key}
                       aria-pressed={decoration === key}
                       className={decoration === key ? 'chosen' : ''}
-                      onClick={() => setDecoration(key as typeof decoration)}
+                      onClick={() => setDecoration(key as DecorationKey)}
                     >
-                      <span>{item.icon}</span>
-                      {item.label}
-                      {decoration === key && <small>✓ Elegido</small>}
+                      <span>{icon}</span>
+                      {content.decorations[key as DecorationKey]}
+                      {decoration === key && <small>{t.chosen}</small>}
                     </button>
                   ))}
                 </div>
@@ -419,9 +406,9 @@ export default function App({
                     chime();
                   }}
                 >
-                  Decorar y conocer a mi amigo →
+                  {t.decorate} →
                 </button>
-                <p className="rest-note">¡Buen momento para descansar! La isla te esperará.</p>
+                <p className="rest-note">{t.restTime}</p>
               </div>
             )}
           </section>
@@ -434,14 +421,15 @@ export default function App({
         onClose={() => setSettings(false)}
       >
         <div className="dialog-heading">
-          <h2>Como a ti te gusta</h2>
-          <button aria-label="Cerrar ajustes" onClick={() => setSettings(false)}>
+          <h2>{t.settingsTitle}</h2>
+          <button aria-label={t.closeSettings} onClick={() => setSettings(false)}>
             ×
           </button>
         </div>
         <label className="setting-row">
           <span>
-            Sonidos suaves<small>Al encender una luz</small>
+            {t.sound}
+            <small>{t.soundHint}</small>
           </span>
           <input
             type="checkbox"
@@ -451,7 +439,8 @@ export default function App({
         </label>
         <label className="setting-row">
           <span>
-            Animaciones<small>Un poco de movimiento</small>
+            {t.motion}
+            <small>{t.motionHint}</small>
           </span>
           <input
             type="checkbox"
@@ -460,7 +449,7 @@ export default function App({
           />
         </label>
         <details className="adult-panel">
-          <summary>Para acompañantes</summary>
+          <summary>{t.forAdults}</summary>
           <BackupPanel
             storage={storage}
             progress={progress}
@@ -475,48 +464,36 @@ export default function App({
           />
           <AdultProgress progress={progress} />
         </details>
-        <p className="privacy-note">
-          {cloudAccount
-            ? 'Tu acceso y tu partida se guardan en Firebase para continuar en otros dispositivos. Sin publicidad ni analítica.'
-            : 'El progreso se guarda en este navegador. Borrar sus datos también borra esta copia. Sin publicidad ni analítica.'}
-        </p>
+        <p className="privacy-note">{cloudAccount ? t.privacyCloud : t.privacyLocal}</p>
         <button className="primary" onClick={() => setSettings(false)}>
-          Listo
+          {t.done}
         </button>
       </dialog>
     </div>
   );
 }
 function AdultProgress({ progress }: { progress: Progress }) {
+  const { t } = useI18n();
   const difficult = hardestFacts(progress);
   return (
     <div>
-      <p>
-        {progress.missions} expediciones completadas · {progress.lights} luces. Las tablas se abren
-        al completar una expedición, sin exigir velocidad.
-      </p>
-      <p>
-        Operaciones afianzadas: respuestas independientes en repasos separados. Las ayudas no restan
-        recompensas.
-      </p>
+      <p>{t.adultSummary(progress.missions, progress.lights)}</p>
+      <p>{t.adultMastered}</p>
       <div className="adult-tables">
         {TABLE_ORDER.map((table) => (
           <div key={table}>
-            Tabla del {table}
+            {t.table(table)}
             <strong>{masteredCount(progress, table)}/10</strong>
           </div>
         ))}
       </div>
       <p>
-        <strong>Conviene acompañar:</strong>{' '}
+        <strong>{t.adultSupport}</strong>{' '}
         {difficult.length
           ? difficult.map(([id]) => id.replace('x', ' × ')).join(', ')
-          : 'Aún no hay operaciones que destaquen por errores.'}
+          : t.adultNoErrors}
       </p>
-      <p>
-        Una sesión tiene 24 retos y dos descansos; puede durar unos 5–10 minutos, según el ritmo. Se
-        puede interrumpir en cualquier momento. El tiempo en segundo plano no cuenta.
-      </p>
+      <p>{t.adultSession}</p>
     </div>
   );
 }

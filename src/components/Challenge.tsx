@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import type { GameAction } from '../core/game';
 import type { Expedition } from '../core/model';
-import { STAGES } from '../content';
+import { stageIcon } from '../content';
+import { useI18n } from '../i18n';
 import { Firefly } from './Artwork';
 
 function SeedPattern({ count }: { count: number }) {
   const columns = count === 9 ? 3 : count > 5 ? Math.ceil(count / 2) : count;
   const rows = Math.ceil(count / columns);
+  const { t } = useI18n();
   return (
     <span className="seed-group" aria-hidden="true">
       <svg className="seed-pattern" viewBox={`0 0 100 ${rows * 20}`}>
@@ -20,7 +22,7 @@ function SeedPattern({ count }: { count: number }) {
         ))}
       </svg>
       <span className="seed-total">
-        {count} <small>{count === 1 ? 'semilla' : 'semillas'}</small>
+        {count} <small>{t.seeds(count)}</small>
       </span>
     </span>
   );
@@ -37,18 +39,17 @@ function GroupGarden({
   onHelp: () => void;
   onReady: () => void;
 }) {
+  const { t } = useI18n();
   const [planted, setPlanted] = useState<number[]>([]);
   return (
     <div className="group-garden">
-      <p>
-        Toca cada parcela: planta {b} {b === 1 ? 'semilla' : 'semillas'}.
-      </p>
+      <p>{t.tapPlots(b)}</p>
       <div className="plots">
         {Array.from({ length: a }, (_, i) => (
           <button
             className={`plot ${planted.includes(i) ? 'planted' : ''}`}
             key={i}
-            aria-label={`Parcela ${i + 1}, ${planted.includes(i) ? `${b} semillas` : 'plantar'}`}
+            aria-label={t.plotLabel(i + 1, planted.includes(i), b)}
             disabled={planted.includes(i)}
             onClick={() => {
               setPlanted([...planted, i]);
@@ -61,8 +62,7 @@ function GroupGarden({
         ))}
       </div>
       <p className="garden-count" aria-live="polite">
-        {planted.length} {planted.length === 1 ? 'grupo' : 'grupos'} de {b} ={' '}
-        <strong>{planted.length * b}</strong> semillas
+        {t.groupsOf(planted.length, b)} = <strong>{planted.length * b}</strong> {t.seedsWord}
       </p>
     </div>
   );
@@ -76,12 +76,13 @@ export function Challenge({
   dispatch: (action: GameAction) => void;
   sound: () => void;
 }) {
+  const { t, content } = useI18n();
   const question = expedition.questions[expedition.index];
   const exploration = expedition.index < 2;
   const stage = Math.floor(expedition.index / 8);
   const [gardenReady, setGardenReady] = useState(false);
   const [input, setInput] = useState('');
-  const [feedback, setFeedback] = useState('');
+  const [wrong, setWrong] = useState(false);
   const [showGarden, setShowGarden] = useState(question.hinted);
   const next = useRef<HTMLButtonElement>(null);
   const title = useRef<HTMLHeadingElement>(null);
@@ -104,9 +105,8 @@ export function Challenge({
     const correct = value === question.fact.a * question.fact.b;
     if (correct) {
       sound();
-      setFeedback('¡Lo has conseguido! Una luz más para tu refugio.');
     } else {
-      setFeedback('Todavía no. Vamos a verlo con semillas. Puedes probar otra vez.');
+      setWrong(true);
       setShowGarden(true);
       setInput('');
     }
@@ -119,14 +119,14 @@ export function Challenge({
   }
   const { a, b } = question.fact;
   return (
-    <section className="challenge" aria-label="Reto de la expedición">
+    <section className="challenge" aria-label={t.challengeLabel}>
       <div className="challenge-world">
         <div className="stage-label">
-          <span>{STAGES[stage].icon}</span> {STAGES[stage].name}
+          <span>{stageIcon(stage)}</span> {content.stages[stage].name}
         </div>
         <div
           className={`world-progress world-stage-${stage}`}
-          aria-label={`${(expedition.index % 8) + Number(question.resolved)} de 8 piezas completadas`}
+          aria-label={t.piecesDone((expedition.index % 8) + Number(question.resolved))}
         >
           {Array.from({ length: 8 }, (_, i) => (
             <span
@@ -137,19 +137,17 @@ export function Challenge({
             </span>
           ))}
         </div>
-        <p>{STAGES[stage].instruction}</p>
+        <p>{content.stages[stage].instruction}</p>
       </div>
       <div className="question-card">
         <div className="question-top">
-          <span className="eyebrow">RETO {(expedition.index % 8) + 1} DE 8</span>
-          <span className="table-badge">Tabla del {a}</span>
+          <span className="eyebrow">{t.challengeOf((expedition.index % 8) + 1)}</span>
+          <span className="table-badge">{t.table(a)}</span>
         </div>
         <h2 ref={title} tabIndex={-1} className="equation">
           {a} <span>×</span> {b} <span>=</span> {question.resolved ? <strong>{a * b}</strong> : '?'}
         </h2>
-        <p className="equation-caption">
-          {a} {a === 1 ? 'grupo' : 'grupos'} de {b}
-        </p>
+        <p className="equation-caption">{t.groupsOf(a, b)}</p>
         {showGarden && !question.resolved && (
           <GroupGarden
             a={a}
@@ -168,10 +166,10 @@ export function Challenge({
                   if (input) answer(Number(input), performance.now(), Date.now());
                 }}
               >
-                <label htmlFor="answer">¿Cuántas luces en total?</label>
+                <label htmlFor="answer">{t.howManyLights}</label>
                 <input
                   id="answer"
-                  aria-label="Tu respuesta"
+                  aria-label={t.yourAnswer}
                   inputMode="numeric"
                   autoComplete="off"
                   value={input}
@@ -179,7 +177,7 @@ export function Challenge({
                   onChange={(event) => setInput(event.target.value.replace(/\D/g, '').slice(0, 3))}
                 />
                 <button className="primary" disabled={!input} type="submit">
-                  Encender ✦
+                  {t.lightUp}
                 </button>
               </form>
             ) : (
@@ -190,18 +188,14 @@ export function Challenge({
                     disabled={exploration && !gardenReady}
                     key={option}
                     onClick={() => answer(option, performance.now(), Date.now())}
-                    aria-label={`Responder ${option}`}
+                    aria-label={t.answerLabel(option)}
                   >
                     {option}
                   </button>
                 ))}
               </div>
             )}
-            {exploration && !gardenReady && (
-              <p className="plant-instruction">
-                Primero planta todas las parcelas. Después, elige el total.
-              </p>
-            )}
+            {exploration && !gardenReady && <p className="plant-instruction">{t.plantFirst}</p>}
             <button
               className="help-button"
               disabled={exploration && !gardenReady}
@@ -210,17 +204,17 @@ export function Challenge({
                 dispatch({ type: 'hint' });
               }}
             >
-              {showGarden ? 'Ocultar semillas' : '✿ Lo vemos con semillas'}
+              {showGarden ? t.hideSeeds : t.showSeeds}
             </button>
           </>
         )}
         <div className={`feedback ${question.resolved ? 'success' : ''}`} role="status">
           {question.resolved ? (
             <>
-              <span>✓</span> {feedback || '¡Lo has conseguido! Una luz más para tu refugio.'}
+              <span>✓</span> {t.correct}
             </>
           ) : (
-            feedback
+            wrong && t.wrong
           )}
         </div>
         {question.resolved && (
@@ -230,10 +224,10 @@ export function Challenge({
             onClick={() => dispatch({ type: 'next', now: Date.now() })}
           >
             {expedition.index === 23
-              ? 'Descubrir mi refugio'
+              ? t.discoverRefuge
               : (expedition.index + 1) % 8 === 0
-                ? '¡Tramo completado!'
-                : 'Seguir explorando'}{' '}
+                ? t.legDone
+                : t.keepExploring}{' '}
             <span>→</span>
           </button>
         )}
@@ -242,7 +236,7 @@ export function Challenge({
         <div className="garden-invitation">
           <Firefly />
           <p>
-            ¿Quieres descubrir cómo funciona?
+            {t.howItWorks}
             <br />
             <button
               onClick={() => {
@@ -250,7 +244,7 @@ export function Challenge({
                 dispatch({ type: 'hint' });
               }}
             >
-              Planta grupos de semillas →
+              {t.plantGroups} →
             </button>
           </p>
         </div>
