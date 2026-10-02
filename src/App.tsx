@@ -9,6 +9,7 @@ import {
 } from './core/model';
 import { hardestFacts, loadProgress, saveProgress } from './core/storage';
 import { Creature, Firefly, IslandArt } from './components/Artwork';
+import { BackupPanel } from './components/BackupPanel';
 import { Challenge } from './components/Challenge';
 import { DECORATIONS, REFUGES, STAGES } from './content';
 function initialState() {
@@ -17,6 +18,7 @@ function initialState() {
   } catch {
     return {
       progress: freshProgress(),
+      protectedSave: false,
       warning:
         'No se puede guardar en este navegador. Puedes jugar mientras esta pestaña siga abierta.',
     };
@@ -32,6 +34,7 @@ export default function App() {
   );
   const [decoration, setDecoration] = useState<keyof typeof DECORATIONS>('flowers');
   const [warning, setWarning] = useState(initial.warning);
+  const [protectedSave, setProtectedSave] = useState(initial.protectedSave);
   const [visited, setVisited] = useState<number | null>(null);
   const audio = useRef<AudioContext | null>(null);
   const settingsDialog = useRef<HTMLDialogElement>(null);
@@ -46,7 +49,9 @@ export default function App() {
     // A synchronous storage failure must be visible even when the browser offers no storage events.
     if (!saved)
       setWarning(
-        'Puedes seguir jugando, pero no podemos guardar. Mantén esta pestaña abierta para conservar tu aventura.',
+        (current) =>
+          current ??
+          'Puedes seguir jugando, pero no podemos guardar. Descarga una copia desde Ajustes → Para acompañantes antes de cerrar.',
       );
   }, [progress]);
   useEffect(() => {
@@ -438,6 +443,17 @@ export default function App() {
         </label>
         <details className="adult-panel">
           <summary>Para acompañantes</summary>
+          <BackupPanel
+            progress={progress}
+            protectedSave={protectedSave}
+            onRestore={(restored) => {
+              dispatch({ type: 'restore', progress: restored });
+              setProtectedSave(false);
+              setWarning(null);
+              setScreen('island');
+              setSelected(restored.expedition?.table ?? unlockedTables(restored).at(-1)!);
+            }}
+          />
           <AdultProgress progress={progress} />
         </details>
         <p className="privacy-note">

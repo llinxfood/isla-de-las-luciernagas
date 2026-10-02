@@ -1,5 +1,9 @@
 import { freshProgress, TABLE_ORDER, SESSION_LENGTH, type Progress, type FactId } from './model';
+// Keep this key stable across releases; schema changes need an explicit migration.
 export const STORAGE_KEY = 'luciernagas.progress.v1';
+export const BACKUP_KEY = `${STORAGE_KEY}.backup`;
+export const BEFORE_RESTORE_KEY = `${STORAGE_KEY}.before-restore`;
+export const MAX_BACKUP_BYTES = 1_048_576;
 type StoragePort = Pick<Storage, 'getItem' | 'setItem'>;
 const object = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
@@ -104,33 +108,95 @@ export function isProgress(value: unknown): value is Progress {
   if (session.phase === 'reward' && resolved !== SESSION_LENGTH) return false;
   return true;
 }
-export function loadProgress(storage: StoragePort): { progress: Progress; warning: string | null } {
+function parseStoredProgress(raw: string): Progress | null {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return isProgress(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+export function loadProgress(storage: StoragePort): {
+  progress: Progress;
+  warning: string | null;
+  protectedSave: boolean;
+} {
   try {
     const raw = storage.getItem(STORAGE_KEY);
-    if (!raw) return { progress: freshProgress(), warning: null };
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      parsed = null;
-    }
-    if (isProgress(parsed)) return { progress: parsed, warning: null };
-    // Keep the original for manual recovery before replacing an unsupported save.
-    storage.setItem(`${STORAGE_KEY}.recovery`, raw);
+    if (raw === null) return { progress: freshProgress(), warning: null, protectedSave: false };
+    const progress = parseStoredProgress(raw);
+    if (progress) return { progress, warning: null, protectedSave: false };
+    // Never replace an unreadable or newer save, even if making a backup fails.
     return {
       progress: freshProgress(),
-      warning: 'No hemos podido leer tu partida. Guardamos una copia para poder recuperarla.',
+      protectedSave: true,
+      warning:
+        'Esta versión no puede abrir la partida guardada. La original sigue intacta y no se sobrescribirá. Puedes descargarla desde Ajustes → Para acompañantes.',
     };
   } catch {
     return {
       progress: freshProgress(),
+      protectedSave: false,
       warning:
-        'El guardado no está disponible. Puedes jugar, pero la partida podría perderse al cerrar.',
+        'El guardado no está disponible. Puedes jugar, pero la partida podría perderse al cerrar. Descarga una copia desde Ajustes.',
     };
   }
 }
 export function saveProgress(storage: StoragePort, progress: Progress): boolean {
   try {
+    if (!isProgress(progress)) return false;
+    const previous = storage.getItem(STORAGE_KEY);
+    if (previous !== null && !parseStoredProgress(previous)) return false;
+    const next = JSON.stringify(progress);
+    if (previous === next) return true;
+    // Commit the previous state first. Quota errors leave the primary save untouched.
+    if (previous !== null) storage.setItem(BACKUP_KEY, previous);
+    storage.setItem(STORAGE_KEY, next);
+    return true;
+  } catch {
+    return false;
+  }
+}
+export function createBackup(progress: Progress, now = Date.now()): string {
+  return JSON.stringify(
+    {
+      app: 'isla-de-las-luciernagas',
+      backupVersion: 1,
+      exportedAt: new Date(now).toISOString(),
+      progress,
+    },
+    null,
+    2,
+  );
+}
+export function parseBackup(raw: string): Progress {
+  if (raw.length > MAX_BACKUP_BYTES)
+    throw new Error('La copia es demasiado grande. El límite es 1 MB.');
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error('No se puede leer este archivo. Elige una copia del juego en formato JSON.');
+  }
+  // Accept the original v1 format as well as portable backup files.
+  if (isProgress(parsed)) return parsed;
+  if (
+    object(parsed) &&
+    parsed.app === 'isla-de-las-luciernagas' &&
+    parsed.backupVersion === 1 &&
+    isProgress(parsed.progress)
+  )
+    return parsed.progress;
+  throw new Error(
+    'Esta copia está dañada o pertenece a otra versión. Tu partida actual sigue intacta.',
+  );
+}
+export function restoreProgress(storage: StoragePort, progress: Progress): boolean {
+  try {
+    if (!isProgress(progress)) return false;
+    const previous = storage.getItem(STORAGE_KEY);
+    // Only called after explicit confirmation. Keep even an unreadable original verbatim.
+    if (previous !== null) storage.setItem(BEFORE_RESTORE_KEY, previous);
     storage.setItem(STORAGE_KEY, JSON.stringify(progress));
     return true;
   } catch {

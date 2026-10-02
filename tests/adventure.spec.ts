@@ -145,3 +145,78 @@ test('las cien semillas son táctiles y caben en pantalla', async ({ page }, tes
   await page.getByRole('button', { name: 'Responder 100', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('Lo has conseguido');
 });
+
+test('una partida anterior sobrevive a la actualización y se puede exportar y restaurar', async ({
+  page,
+}) => {
+  const { legacySave } = await import('./fixtures/progress-v1');
+  await page.goto('./');
+  await page.evaluate(({ key, legacySave }) => localStorage.setItem(key, legacySave), {
+    key,
+    legacySave,
+  });
+  await page.reload();
+  await page.getByRole('button', { name: 'Ajustes', exact: true }).click();
+  await page.getByText('Para acompañantes', { exact: true }).click();
+  const downloaded = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Descargar copia', exact: true }).click();
+  const download = await downloaded;
+  const path = await download.path();
+  expect(path).toBeTruthy();
+  const { readFile } = await import('node:fs/promises');
+  const content = await readFile(path!, 'utf8');
+  expect(JSON.parse(content).progress).toEqual(JSON.parse(legacySave));
+  // Change the live save, then check that merely reading/cancelling a backup never changes it.
+  await page.getByRole('checkbox', { name: /Sonidos/ }).uncheck();
+  const current = await page.evaluate((key) => localStorage.getItem(key), key);
+  const input = page.getByLabel('Archivo de copia de seguridad');
+  await input.setInputFiles({
+    name: 'incorrecta.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from('{}'),
+  });
+  await expect(page.getByRole('alert')).toContainText('Tu partida actual sigue intacta');
+  expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBe(current);
+  await input.setInputFiles({
+    name: 'aventura.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(content),
+  });
+  await expect(page.getByText('Revisa la copia antes de restaurar')).toBeVisible();
+  expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBe(current);
+  await page.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBe(current);
+  await input.setInputFiles({
+    name: 'aventura.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(content),
+  });
+  await page.getByRole('button', { name: 'Restaurar esta copia', exact: true }).click();
+  await expect(page.getByText('Partida restaurada.', { exact: false })).toBeVisible();
+  expect(await page.evaluate((key) => localStorage.getItem(`${key}.before-restore`), key)).toBe(
+    current,
+  );
+  await page.reload();
+  expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), key)).toEqual(
+    JSON.parse(legacySave),
+  );
+  await page.getByRole('button', { name: 'Continuar mi aventura' }).click();
+  await expect(page.getByRole('heading', { name: '10 × 6 = ?' })).toBeVisible();
+});
+
+test('una partida de formato desconocido permanece intacta después de recargar y jugar', async ({
+  page,
+}) => {
+  const original = JSON.stringify({ version: 2, progress: 'partida que esta versión no entiende' });
+  await page.goto('./');
+  await page.evaluate(({ key, original }) => localStorage.setItem(key, original), {
+    key,
+    original,
+  });
+  await page.reload();
+  await expect(page.getByRole('alert')).toContainText('La original sigue intacta');
+  await page.getByRole('button', { name: '¡Vamos a explorar!' }).click();
+  expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBe(original);
+  await page.reload();
+  expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBe(original);
+});

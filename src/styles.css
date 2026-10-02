@@ -1440,3 +1440,47 @@ html[data-motion='off'] *::after {
 .help-button:disabled {
   display: none;
 }
+
+.backup-panel {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 20px;
+  margin-bottom: 24px;
+}
+.backup-panel h3 {
+  font-size: 18px;
+}
+.backup-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.backup-actions .secondary {
+  margin-left: 0;
+}
+.backup-actions .primary {
+  font-size: 13px;
+  padding: 13px 17px;
+  min-height: 48px;
+}
+.backup-file-input {
+  display: none;
+}
+.backup-preview {
+  background: #edf0e1;
+  padding: 16px;
+  border: 1px solid #bdcdb0;
+  border-radius: 14px;
+  margin: 16px 0;
+}
+.backup-preview h4 {
+  font-size: 15px;
+  margin: 0;
+}
+.backup-error {
+  color: #8b321e;
+  font-weight: 650;
+}
+.backup-recovery .text-button {
+  display: block;
+  text-align: left;
+}

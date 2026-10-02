@@ -1,6 +1,7 @@
 import { answerOptions, recordAttempt, selectFact } from './learning';
 import { SESSION_LENGTH, unlockedTables, type Progress, type Question } from './model';
 export type GameAction =
+  | { type: 'restore'; progress: Progress }
   | { type: 'start'; table: number; now: number; random?: () => number }
   | { type: 'hint' }
   | { type: 'answer'; answer: number; durationMs: number; now: number }
@@ -20,6 +21,7 @@ function question(progress: Progress, table: number, now: number, random = Math.
   };
 }
 export function gameReducer(progress: Progress, action: GameAction): Progress {
+  if (action.type === 'restore') return action.progress;
   const expedition = progress.expedition;
   if (action.type === 'settings')
     return {

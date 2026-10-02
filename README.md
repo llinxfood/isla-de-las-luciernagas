@@ -90,11 +90,13 @@ src/
     model.ts          Tipos, orden de tablas y reglas de desbloqueo
     learning.ts       Prioridad, selección, respuestas y actualización del aprendizaje
     game.ts           Transiciones de la expedición y recompensas
-    storage.ts        Lectura, validación y escritura versionada
+    storage.ts        Guardado protegido, validación y copias portables
     core.test.ts      Pruebas del dominio
+    backup.test.ts    Compatibilidad y restauración sin pérdidas
   components/
     Artwork.tsx       Isla, habitantes y decoraciones SVG locales
     Challenge.tsx     Reto, parcelas táctiles, ayudas y tiempo activo
+    BackupPanel.tsx   Descarga, revisión e importación de partidas
   content.ts          Refugios, personajes, tramos y textos compartidos
   App.tsx             Navegación, expedición, colección, ajustes y guardado
   main.tsx
@@ -156,13 +158,27 @@ El mapa responde a lo aprendido mediante el progreso de la aventura. El desbloqu
 
 - Clave de guardado: `luciernagas.progress.v1`.
 - Se guarda cada transición, también los errores, las ayudas y los descansos.
-- El lector valida estructuras, tipos, contadores, preguntas y fases. Si una partida tiene un formato desconocido o está dañada, intenta conservarla en `.recovery` antes de comenzar otra.
+- El lector valida estructuras, tipos, contadores, preguntas y fases. Una partida desconocida o dañada permanece intacta en su clave original: se bloquea la escritura automática y se ofrece descargarla para recuperarla.
+- Antes de cada cambio de guardado se conserva el estado válido anterior en `luciernagas.progress.v1.backup`. Recargar sin cambios no reemplaza esa copia. Si falla la copia previa, no se escribe la principal.
 - Si el navegador bloquea el almacenamiento o se agota la cuota, muestra un aviso y permite seguir jugando en memoria.
 - No hay sincronización entre pestañas o dispositivos. Conviene usar una sola pestaña para la partida; dos abiertas pueden sobrescribir el progreso local.
 - No se envían respuestas, tiempos ni progreso. GitHub Pages recibe las peticiones normales de archivos estáticos; la aplicación no hace peticiones de datos ni utiliza rastreadores.
 - Borrar los datos del navegador elimina el progreso. No se solicitan nombres, edad u otros datos personales.
 - Botones grandes, navegación por teclado, foco visible, mensajes de estado y ayudas con símbolos y texto.
 - El diálogo de ajustes atrapa el foco y se cierra con Escape. Se respeta `prefers-reduced-motion`, además del interruptor propio de animaciones. Sonido desactivado inicialmente.
+
+## Conservar y trasladar la partida
+
+En **Ajustes → Para acompañantes → Copia de tu aventura**:
+
+1. **Descargar copia** guarda un archivo JSON con toda la partida: operaciones, recompensas, ajustes y expedición en curso. Conserva ese archivo fuera del navegador.
+2. **Abrir una copia** permite seleccionar ese archivo desde el mismo dispositivo o desde otro. Admite también el formato original v1. Primero muestra un resumen y permite cancelar; leer el archivo no modifica la partida.
+3. **Restaurar esta copia** sustituye la partida solo tras pulsar el botón de confirmación. Antes guarda la original en `luciernagas.progress.v1.before-restore`; se puede descargar desde **Recuperar una partida anterior**.
+4. **Ver copia automática anterior** permite revisar y restaurar el guardado inmediatamente anterior. Esta copia local también se pierde al borrar los datos del navegador; el archivo descargado es la copia independiente.
+
+El archivo se procesa localmente, sin subirlo a ningún servidor. Se rechazan archivos dañados, formatos no compatibles y archivos de más de 1 MB. Una restauración que no se pueda guardar no sustituye la partida en memoria.
+
+Las actualizaciones mantienen la clave y el formato actuales. Un cambio futuro de esquema debe incorporar una migración explícita y conservar las pruebas con la partida histórica de `tests/fixtures/progress-v1.ts`. Nunca se debe solucionar una incompatibilidad borrando o reiniciando el guardado. Localhost y GitHub Pages tienen almacenes distintos: para trasladar una partida entre ellos, descarga e importa el archivo.
 
 ## Decisiones y límites de esta primera versión
 
