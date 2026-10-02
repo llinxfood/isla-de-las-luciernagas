@@ -22,10 +22,12 @@ function downloadFile(content: string, label: string) {
 
 export function BackupPanel({
   progress,
+  storage,
   protectedSave,
   onRestore,
 }: {
   progress: Progress;
+  storage: Pick<Storage, 'getItem' | 'setItem'>;
   protectedSave: boolean;
   onRestore: (progress: Progress) => void;
 }) {
@@ -41,7 +43,7 @@ export function BackupPanel({
   function downloadCurrent() {
     setError('');
     try {
-      const raw = protectedSave ? window.localStorage.getItem(STORAGE_KEY) : createBackup(progress);
+      const raw = protectedSave ? storage.getItem(STORAGE_KEY) : createBackup(progress);
       if (raw === null) throw new Error('No encontramos la partida original en este navegador.');
       downloadFile(raw, protectedSave ? 'original' : 'partida');
       setMessage(
@@ -71,7 +73,7 @@ export function BackupPanel({
     setError('');
     setMessage('');
     try {
-      const raw = window.localStorage.getItem(BACKUP_KEY);
+      const raw = storage.getItem(BACKUP_KEY);
       if (raw === null) throw new Error('Todavía no hay una copia automática anterior.');
       setPending(parseBackup(raw));
     } catch (caught) {
@@ -81,7 +83,7 @@ export function BackupPanel({
   function downloadBeforeRestore() {
     setError('');
     try {
-      const raw = window.localStorage.getItem(BEFORE_RESTORE_KEY);
+      const raw = storage.getItem(BEFORE_RESTORE_KEY);
       if (raw === null)
         throw new Error('Todavía no se ha restaurado ninguna partida en este navegador.');
       downloadFile(raw, 'antes-de-restaurar');
@@ -94,7 +96,7 @@ export function BackupPanel({
     if (!pending) return;
     setError('');
     try {
-      if (!restoreProgress(window.localStorage, pending))
+      if (!restoreProgress(storage, pending))
         throw new Error('No se pudo guardar la restauración. La partida actual no se ha cambiado.');
       onRestore(pending);
       setPending(null);
@@ -110,7 +112,7 @@ export function BackupPanel({
     try {
       const recovered = recoverFirstFourFriends(progress);
       if (recovered === progress) return;
-      if (!restoreProgress(window.localStorage, recovered))
+      if (!restoreProgress(storage, recovered))
         throw new Error('No se pudo guardar la recuperación. La partida actual no se ha cambiado.');
       onRestore(recovered);
       setMessage('Luma, Pipo, Coral y Mora están disponibles. Puedes cerrar Ajustes.');

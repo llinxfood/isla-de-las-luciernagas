@@ -1484,3 +1484,48 @@ html[data-motion='off'] *::after {
   display: block;
   text-align: left;
 }
+
+.account-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  padding: 12px 20px;
+  background: var(--paper, #fffdf5);
+  border: 1px solid #c4cfb8;
+  border-radius: 18px;
+  margin: 0 0 20px;
+}
+.account-bar > span {
+  flex: 1 1 240px;
+}
+.account-screen {
+  max-width: 720px;
+  padding: 32px 24px;
+  margin: 40px auto;
+}
+.account-screen > button {
+  margin: 12px 12px 12px 0;
+}
+.account-dialog form {
+  display: grid;
+  gap: 18px;
+}
+.account-dialog label {
+  display: grid;
+  gap: 8px;
+}
+.account-dialog input {
+  width: 100%;
+  min-height: 52px;
+  font: inherit;
+  padding: 10px;
+  background: #fff;
+  color: #193d34;
+  border: 2px solid #6e8066;
+  border-radius: 12px;
+}
+.account-dialog > .text-button {
+  display: block;
+  margin-top: 12px;
+}

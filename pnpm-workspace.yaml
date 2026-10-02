@@ -1,0 +1,4 @@
+# These packages ship prebuilt browser code; their optional install scripts are unnecessary.
+allowBuilds:
+  '@firebase/util': false
+  protobufjs: false

@@ -2,7 +2,7 @@
 
 Una aventura en castellano para practicar las tablas del 1 al 10. La niña da vida a diez refugios, descubre a sus habitantes y elige cómo decorarlos. Pensada para 7–9 años y para jugar con los dedos en una tablet.
 
-**React + TypeScript + Vite. Sin backend, cuentas, anuncios, analítica ni recursos de terceros en tiempo de ejecución.** La partida y los ajustes permanecen en el navegador del dispositivo.
+**React + TypeScript + Vite. Sin anuncios ni analítica.** Se puede jugar sin cuenta: la partida permanece en el navegador. Opcionalmente, una cuenta con Firebase sincroniza la partida entre dispositivos.
 
 ## Jugar
 
@@ -161,8 +161,8 @@ El mapa responde a lo aprendido mediante el progreso de la aventura. El desbloqu
 - El lector valida estructuras, tipos, contadores, preguntas y fases. Una partida desconocida o dañada permanece intacta en su clave original: se bloquea la escritura automática y se ofrece descargarla para recuperarla.
 - Antes de cada cambio de guardado se conserva el estado válido anterior en `luciernagas.progress.v1.backup`. Recargar sin cambios no reemplaza esa copia. Si falla la copia previa, no se escribe la principal.
 - Si el navegador bloquea el almacenamiento o se agota la cuota, muestra un aviso y permite seguir jugando en memoria.
-- No hay sincronización entre pestañas o dispositivos. Conviene usar una sola pestaña para la partida; dos abiertas pueden sobrescribir el progreso local.
-- No se envían respuestas, tiempos ni progreso. GitHub Pages recibe las peticiones normales de archivos estáticos; la aplicación no hace peticiones de datos ni utiliza rastreadores.
+- Sin cuenta no hay sincronización entre pestañas o dispositivos. Conviene usar una sola pestaña para la partida; dos abiertas pueden sobrescribir el progreso local.
+- Sin cuenta no se envían respuestas, tiempos ni progreso, y el SDK de Firebase ni siquiera se descarga. Con cuenta, la partida se guarda en Firestore (ver más abajo). No se utilizan rastreadores.
 - Borrar los datos del navegador elimina el progreso. No se solicitan nombres, edad u otros datos personales.
 - Botones grandes, navegación por teclado, foco visible, mensajes de estado y ayudas con símbolos y texto.
 - El diálogo de ajustes atrapa el foco y se cierra con Escape. Se respeta `prefers-reduced-motion`, además del interruptor propio de animaciones. Sonido desactivado inicialmente.
@@ -184,11 +184,24 @@ En el dispositivo donde juega la niña, abre **Ajustes → Para acompañantes �
 
 Las actualizaciones mantienen la clave y el formato actuales. Un cambio futuro de esquema debe incorporar una migración explícita y conservar las pruebas con la partida histórica de `tests/fixtures/progress-v1.ts`. Nunca se debe solucionar una incompatibilidad borrando o reiniciando el guardado. Localhost y GitHub Pages tienen almacenes distintos: para trasladar una partida entre ellos, descarga e importa el archivo.
 
+## Sincronización con cuenta (Firebase)
+
+Opcional. **Entrar o crear cuenta** (barra superior de la isla) usa Firebase Authentication con correo y contraseña. La partida se guarda en Firestore, en `players/{uid}`, con un número de revisión.
+
+- El SDK de Firebase se carga solo al pulsar **Entrar o crear cuenta**, o al abrir el juego en un dispositivo donde ya se inició sesión.
+- Cada cuenta tiene su copia local separada (`luciernagas.account.{uid}.*`). La partida sin cuenta (`luciernagas.progress.v1`) no se modifica al entrar ni al salir.
+- Al entrar por primera vez se puede **llevar la partida de este dispositivo** a la cuenta o empezar una isla nueva.
+- Se guarda primero en local y se sube a los pocos instantes. Sin conexión se sigue jugando y se reintenta al volver la conexión, al recuperar el foco y cada 30 s.
+- Si dos dispositivos avanzan por separado, se detecta por la revisión y se pregunta cuál continuar. Antes se guardan ambas versiones en `…conflict-local` y `…conflict-remote`.
+- Reglas en `firestore.rules`: cada cuenta lee y escribe únicamente su documento, con revisiones consecutivas y tamaño limitado. Publicarlas con `firebase deploy --only firestore:rules`.
+- La configuración web pública está en `src/cloud/config.json` (no es secreta) y se puede sustituir con las variables de `.env.example`. `VITE_FIREBASE_ENABLED=false` desactiva las cuentas.
+- En Firebase → Authentication → Configuración → Dominios autorizados debe figurar el dominio de GitHub Pages.
+
 ## Decisiones y límites de esta primera versión
 
 - **Sin PWA por ahora.** Evita complejidad de actualización de cachés. Una página ya cargada funciona sin llamadas de datos, pero no se garantiza abrirla de nuevo sin conexión.
 - **Sin gestor de estado ni router adicionales.** Una expedición y tres vistas no los requieren.
 - **Sin biblioteca de animaciones ni recursos remotos.** El dibujo y los efectos son locales.
 - **TypeScript 5.9 y ESLint 9.** Combinación compatible con las herramientas elegidas; versiones exactas resueltas en el lockfile. No se activa React Compiler.
-- **Una partida por navegador.** No hay perfiles, cuentas ni tratamiento de información personal.
+- **Una partida por navegador o por cuenta.** La cuenta solo pide correo y contraseña; no se solicitan nombre real ni edad.
 - **Próxima validación de producto:** observar una sesión de 5–10 minutos, comprobar si entiende las parcelas sin ayuda, si recuerda el propósito de los tres tramos y si desea volver. Ajustar longitud y pesos a partir de esa observación, sin añadir analítica.

@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from 'react';
+import { useEffect, useReducer, useRef, useState, type ReactNode } from 'react';
 import { gameReducer } from './core/game';
 import {
   freshProgress,
@@ -12,9 +12,10 @@ import { Creature, Firefly, IslandArt } from './components/Artwork';
 import { BackupPanel } from './components/BackupPanel';
 import { Challenge } from './components/Challenge';
 import { DECORATIONS, REFUGES, STAGES } from './content';
-function initialState() {
+type StoragePort = Pick<Storage, 'getItem' | 'setItem'>;
+function initialState(storage: StoragePort) {
   try {
-    return loadProgress(window.localStorage);
+    return loadProgress(storage);
   } catch {
     return {
       progress: freshProgress(),
@@ -24,8 +25,18 @@ function initialState() {
     };
   }
 }
-const initial = initialState();
-export default function App() {
+export default function App({
+  storage = window.localStorage,
+  onSaved,
+  accountControls,
+  cloudAccount = false,
+}: {
+  storage?: StoragePort;
+  onSaved?: () => void;
+  accountControls?: ReactNode;
+  cloudAccount?: boolean;
+}) {
+  const [initial] = useState(() => initialState(storage));
   const [progress, dispatch] = useReducer(gameReducer, initial.progress);
   const [screen, setScreen] = useState<'island' | 'collection' | 'game'>('island');
   const [settings, setSettings] = useState(false);
@@ -42,10 +53,11 @@ export default function App() {
   useEffect(() => {
     let saved = false;
     try {
-      saved = saveProgress(window.localStorage, progress);
+      saved = saveProgress(storage, progress);
     } catch {
       /* Storage may be disabled. */
     }
+    if (saved) onSaved?.();
     // A synchronous storage failure must be visible even when the browser offers no storage events.
     if (!saved)
       setWarning(
@@ -53,7 +65,7 @@ export default function App() {
           current ??
           'Puedes seguir jugando, pero no podemos guardar. Descarga una copia desde Ajustes → Para acompañantes antes de cerrar.',
       );
-  }, [progress]);
+  }, [progress, storage, onSaved]);
   useEffect(() => {
     document.documentElement.dataset.motion = progress.settings.motion ? 'on' : 'off';
   }, [progress.settings.motion]);
@@ -141,6 +153,7 @@ export default function App() {
           </button>
         </div>
       )}
+      {accountControls}
       <main id="main">
         {!isPlaying && screen === 'island' && (
           <>
@@ -179,7 +192,8 @@ export default function App() {
                   <span>→</span>
                 </button>
                 <span className="session-note">
-                  3 pequeños tramos · a tu ritmo · se guarda aquí
+                  3 pequeños tramos · a tu ritmo ·{' '}
+                  {cloudAccount ? 'con copia en tu cuenta' : 'se guarda aquí'}
                 </span>
                 {expedition && (
                   <span className="session-note">
@@ -268,7 +282,11 @@ export default function App() {
             </section>
             <footer className="island-footer">
               <span>✧ Sin prisas. Con muchas ganas.</span>
-              <span>Tu aventura vive solo en este dispositivo.</span>
+              <span>
+                {cloudAccount
+                  ? 'Tu aventura viaja contigo.'
+                  : 'Tu aventura se guarda en este dispositivo.'}
+              </span>
             </footer>
           </>
         )}
@@ -444,6 +462,7 @@ export default function App() {
         <details className="adult-panel">
           <summary>Para acompañantes</summary>
           <BackupPanel
+            storage={storage}
             progress={progress}
             protectedSave={protectedSave}
             onRestore={(restored) => {
@@ -457,8 +476,9 @@ export default function App() {
           <AdultProgress progress={progress} />
         </details>
         <p className="privacy-note">
-          Sin cuentas, publicidad ni seguimiento. El progreso se guarda únicamente en este
-          navegador. Borrar sus datos también borra la partida.
+          {cloudAccount
+            ? 'Tu acceso y tu partida se guardan en Firebase para continuar en otros dispositivos. Sin publicidad ni analítica.'
+            : 'El progreso se guarda en este navegador. Borrar sus datos también borra esta copia. Sin publicidad ni analítica.'}
         </p>
         <button className="primary" onClick={() => setSettings(false)}>
           Listo
