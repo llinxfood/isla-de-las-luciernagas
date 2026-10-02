@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import type { Progress } from '../core/model';
+import { recoverFirstFourFriends } from '../core/recovery';
 import {
   BACKUP_KEY,
   BEFORE_RESTORE_KEY,
@@ -102,6 +103,21 @@ export function BackupPanel({
       reportError(caught);
     }
   }
+  function recoverFriends() {
+    if (protectedSave || pending || reading) return;
+    setError('');
+    setMessage('');
+    try {
+      const recovered = recoverFirstFourFriends(progress);
+      if (recovered === progress) return;
+      if (!restoreProgress(window.localStorage, recovered))
+        throw new Error('No se pudo guardar la recuperación. La partida actual no se ha cambiado.');
+      onRestore(recovered);
+      setMessage('Luma, Pipo, Coral y Mora están disponibles. Puedes cerrar Ajustes.');
+    } catch (caught) {
+      reportError(caught);
+    }
+  }
   return (
     <section className="backup-panel" aria-labelledby="backup-title">
       <h3 id="backup-title">Copia de tu aventura</h3>
@@ -139,6 +155,24 @@ export function BackupPanel({
         </button>
         <button className="text-button" onClick={downloadBeforeRestore}>
           Descargar partida previa a la restauración
+        </button>
+      </details>
+      <details className="backup-recovery">
+        <summary>Recuperar cuatro amigos sin copia</summary>
+        <p>
+          Desbloquea a Luma, Pipo, Coral y Mora en este dispositivo. Conserva los demás amigos, las
+          operaciones practicadas y la aventura en curso. No añade aciertos ni luces. Guardaremos
+          una copia de la partida actual antes de cambiarla.
+        </p>
+        {protectedSave && <p>Primero recupera la partida original con una copia compatible.</p>}
+        <button
+          className="secondary"
+          disabled={protectedSave || reading || !!pending || progress.completed.length >= 4}
+          onClick={recoverFriends}
+        >
+          {progress.completed.length >= 4
+            ? 'Ya tienes los cuatro amigos'
+            : 'Recuperar los cuatro amigos'}
         </button>
       </details>
       {pending && (

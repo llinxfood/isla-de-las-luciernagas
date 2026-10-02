@@ -220,3 +220,33 @@ test('una partida de formato desconocido permanece intacta después de recargar 
   await page.reload();
   expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBe(original);
 });
+
+test('recupera cuatro amigos y conserva la partida tras recargar', async ({ page }) => {
+  const { legacySave } = await import('./fixtures/progress-v1');
+  await page.goto('./');
+  await page.evaluate(({ key, legacySave }) => localStorage.setItem(key, legacySave), {
+    key,
+    legacySave,
+  });
+  await page.reload();
+  const before = await page.evaluate((key) => localStorage.getItem(key), key);
+  await page.getByRole('button', { name: 'Ajustes', exact: true }).click();
+  await page.getByText('Para acompañantes', { exact: true }).click();
+  await page.getByText('Recuperar cuatro amigos sin copia', { exact: true }).click();
+  await page.getByRole('button', { name: 'Recuperar los cuatro amigos', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Ya tienes los cuatro amigos' })).toBeDisabled();
+  expect(await page.evaluate((key) => localStorage.getItem(`${key}.before-restore`), key)).toBe(
+    before,
+  );
+  await page.reload();
+  const recovered = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), key);
+  expect(recovered).toEqual({
+    ...JSON.parse(legacySave),
+    completed: [1, 2, 10, 5],
+    decorations: { '1': 'flowers', '2': 'crystals', '10': 'flowers', '5': 'flowers' },
+  });
+  await page.getByRole('button', { name: /Mis amigos/ }).click();
+  await expect(page.locator('.friend-card:enabled')).toHaveCount(4);
+  for (const name of ['Luma', 'Pipo', 'Coral', 'Mora'])
+    await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
+});

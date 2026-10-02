@@ -178,6 +178,10 @@ En **Ajustes → Para acompañantes → Copia de tu aventura**:
 
 El archivo se procesa localmente, sin subirlo a ningún servidor. Se rechazan archivos dañados, formatos no compatibles y archivos de más de 1 MB. Una restauración que no se pueda guardar no sustituye la partida en memoria.
 
+### Recuperar cuatro amigos sin archivo
+
+En el dispositivo donde juega la niña, abre **Ajustes → Para acompañantes → Recuperar cuatro amigos sin copia → Recuperar los cuatro amigos**. Esto recupera a Luma, Pipo, Coral y Mora y abre la siguiente tabla. Conserva los amigos adicionales, las decoraciones existentes, la expedición, los ajustes y el historial de aprendizaje; no inventa aciertos ni añade luces. Antes guarda la partida en la copia previa a la restauración. La opción queda desactivada si ya tiene los cuatro amigos o si el guardado original no es compatible. No modifica las partidas de otros dispositivos ni se aplica automáticamente al desplegar.
+
 Las actualizaciones mantienen la clave y el formato actuales. Un cambio futuro de esquema debe incorporar una migración explícita y conservar las pruebas con la partida histórica de `tests/fixtures/progress-v1.ts`. Nunca se debe solucionar una incompatibilidad borrando o reiniciando el guardado. Localhost y GitHub Pages tienen almacenes distintos: para trasladar una partida entre ellos, descarga e importa el archivo.
 
 ## Decisiones y límites de esta primera versión
