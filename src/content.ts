@@ -1,0 +1,103 @@
+export const REFUGES = [
+  {
+    name: 'El claro de Luma',
+    creature: 'Luma',
+    description: 'Una pequeña exploradora que guarda el sol en su barriga.',
+    landscape: 'el claro',
+    color: '#edbf65',
+  },
+  {
+    name: 'El bosque gemelo',
+    creature: 'Pipo',
+    description: 'Le gusta saltar de dos en dos entre las hojas.',
+    landscape: 'el bosque',
+    color: '#a9c9b1',
+  },
+  {
+    name: 'La bahía brillante',
+    creature: 'Coral',
+    description: 'Colecciona diez conchas antes de volver a casa.',
+    landscape: 'la bahía',
+    color: '#deaf97',
+  },
+  {
+    name: 'El jardín lunar',
+    creature: 'Mora',
+    description: 'Sus flores abren cinco pétalos cuando sale la luna.',
+    landscape: 'el jardín',
+    color: '#bbafd5',
+  },
+  {
+    name: 'Las tres cascadas',
+    creature: 'Nilo',
+    description: 'Escucha tres cascadas y se inventa una canción.',
+    landscape: 'las cascadas',
+    color: '#a3c3d7',
+  },
+  {
+    name: 'La pradera suave',
+    creature: 'Trébol',
+    description: 'Busca tréboles de cuatro hojas para sus amigos.',
+    landscape: 'la pradera',
+    color: '#edbf65',
+  },
+  {
+    name: 'La cueva de cristal',
+    creature: 'Ópalo',
+    description: 'Encuentra estrellas de seis puntas dentro de las rocas.',
+    landscape: 'la cueva',
+    color: '#a9c9b1',
+  },
+  {
+    name: 'El valle arcoíris',
+    creature: 'Iris',
+    description: 'Pinta los caminos con los siete colores del arcoíris.',
+    landscape: 'el valle',
+    color: '#deaf97',
+  },
+  {
+    name: 'El lago secreto',
+    creature: 'Otto',
+    description: 'Tiene ocho piedritas favoritas. ¡Todas son diferentes!',
+    landscape: 'el lago',
+    color: '#bbafd5',
+  },
+  {
+    name: 'La cima estrellada',
+    creature: 'Nova',
+    description: 'Enciende nueve estrellas para guiar a quienes llegan.',
+    landscape: 'la cima',
+    color: '#a3c3d7',
+  },
+];
+export const STAGES = [
+  {
+    name: 'Siembra el jardín',
+    short: 'Semillas',
+    icon: '✿',
+    instruction: 'Prepara semillas para el refugio.',
+    done: '¡El jardín ya tiene sus semillas!',
+    next: 'Ahora cruzaremos el río para llevarlas a casa.',
+  },
+  {
+    name: 'Construye el puente',
+    short: 'Puente',
+    icon: '▰',
+    instruction: 'Toca la piedra que completa el puente.',
+    done: '¡Ya podemos cruzar el río!',
+    next: 'Solo falta encender las luces del refugio.',
+  },
+  {
+    name: 'Enciende el refugio',
+    short: 'Luces',
+    icon: '✦',
+    instruction: 'Escribe el número para encender la luz.',
+    done: '¡El refugio está lleno de luz!',
+    next: '',
+  },
+];
+export const DECORATIONS = {
+  flowers: { icon: '✿', label: 'Flores' },
+  mushrooms: { icon: '♣', label: 'Setas' },
+  crystals: { icon: '◆', label: 'Cristales' },
+} as const;
