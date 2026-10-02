@@ -268,3 +268,21 @@ test('cambia entre español e inglés y recuerda el idioma sin tocar la partida'
   await expect(page.getByText('Siembra el jardín')).toBeVisible();
   expect(await page.evaluate((key) => localStorage.getItem(key), key)).not.toBe(before);
 });
+
+test('el nombre aparece en el saludo y la invitación a la cuenta se puede cerrar', async ({
+  page,
+}) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Cerrar invitación' }).click();
+  await expect(page.locator('.account-bar')).toHaveCount(0);
+  await page.getByRole('button', { name: '¿Cómo te llamas?' }).click();
+  await expect(page.getByRole('textbox', { name: /Tu nombre/ })).toBeFocused();
+  await page.keyboard.type('Vega');
+  await expect(page.getByRole('heading', { name: 'Tu cuenta' })).toBeVisible();
+  await page.getByRole('button', { name: 'Listo' }).click();
+  await expect(page.getByText('¡Hola, Vega! Soy Luma.')).toBeVisible();
+  await page.reload();
+  await expect(page.getByText('¡Hola, Vega! Soy Luma.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Cerrar invitación' })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});

@@ -26,8 +26,11 @@ export type Expedition = {
   lights: number;
   phase: 'playing' | 'break' | 'reward';
 };
+export const MAX_NAME_LENGTH = 20;
 export type Progress = {
   version: 1;
+  /** Optional nickname. Additive field: saves without it stay valid and older versions keep it. */
+  name?: string;
   facts: Partial<Record<FactId, FactStats>>;
   completed: number[];
   decorations: Record<string, 'flowers' | 'mushrooms' | 'crystals'>;
@@ -55,7 +58,7 @@ export function freshProgress(): Progress {
     decorations: {},
     missions: 0,
     lights: 0,
-    settings: { sound: false, motion: true },
+    settings: { sound: true, motion: true },
     expedition: null,
   };
 }

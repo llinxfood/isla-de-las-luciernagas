@@ -3,6 +3,7 @@ import { gameReducer } from './core/game';
 import {
   freshProgress,
   masteredCount,
+  MAX_NAME_LENGTH,
   TABLE_ORDER,
   unlockedTables,
   type Progress,
@@ -24,12 +25,16 @@ function initialState(storage: StoragePort) {
 export default function App({
   storage = window.localStorage,
   onSaved,
-  accountControls,
+  notice,
+  account,
   cloudAccount = false,
 }: {
   storage?: StoragePort;
   onSaved?: () => void;
-  accountControls?: ReactNode;
+  /** Optional banner under the header (account invitation or sync problem). */
+  notice?: ReactNode;
+  /** Account controls shown in Settings. */
+  account?: ReactNode;
   cloudAccount?: boolean;
 }) {
   const { t, content, core } = useI18n();
@@ -47,6 +52,8 @@ export default function App({
   const audio = useRef<AudioContext | null>(null);
   const settingsDialog = useRef<HTMLDialogElement>(null);
   const settingsButton = useRef<HTMLButtonElement>(null);
+  const nameInput = useRef<HTMLInputElement>(null);
+  const focusName = useRef(false);
   useEffect(() => {
     let saved = false;
     try {
@@ -62,8 +69,11 @@ export default function App({
     document.documentElement.dataset.motion = progress.settings.motion ? 'on' : 'off';
   }, [progress.settings.motion]);
   useEffect(() => {
-    if (settings) settingsDialog.current?.showModal();
-    else if (settingsDialog.current?.open) {
+    if (settings) {
+      settingsDialog.current?.showModal();
+      if (focusName.current) nameInput.current?.focus();
+      focusName.current = false;
+    } else if (settingsDialog.current?.open) {
       settingsDialog.current.close();
       settingsButton.current?.focus();
     }
@@ -150,7 +160,7 @@ export default function App({
           </button>
         </div>
       )}
-      {accountControls}
+      {notice}
       <main id="main">
         {!isPlaying && screen === 'island' && (
           <>
@@ -172,9 +182,20 @@ export default function App({
                 <div className="luma-message">
                   <Firefly />
                   <p>
-                    {t.lumaHello}
+                    {progress.name?.trim() ? t.lumaHelloName(progress.name.trim()) : t.lumaHello}
                     <br />
                     <strong>{progress.missions ? t.lumaContinue : t.lumaStart}</strong>
+                    {!progress.name && (
+                      <button
+                        className="text-button ask-name"
+                        onClick={() => {
+                          focusName.current = true;
+                          setSettings(true);
+                        }}
+                      >
+                        {t.askName}
+                      </button>
+                    )}
                   </p>
                 </div>
                 <button className="primary hero-cta" onClick={start}>
@@ -369,7 +390,9 @@ export default function App({
                 <Creature
                   index={TABLE_ORDER.indexOf(expedition.table as (typeof TABLE_ORDER)[number])}
                 />
-                <span className="eyebrow">{t.rewardEyebrow}</span>
+                <span className="eyebrow">
+                  {progress.name?.trim() ? t.wellDone(progress.name.trim()) : t.rewardEyebrow}
+                </span>
                 <h1>
                   {t.hasHome(
                     content.refuges[
@@ -426,6 +449,20 @@ export default function App({
             ×
           </button>
         </div>
+        <label className="setting-row name-row">
+          <span>
+            {t.nameLabel}
+            <small>{t.nameHint}</small>
+          </span>
+          <input
+            ref={nameInput}
+            type="text"
+            autoComplete="off"
+            maxLength={MAX_NAME_LENGTH}
+            value={progress.name ?? ''}
+            onChange={(event) => dispatch({ type: 'name', name: event.target.value })}
+          />
+        </label>
         <label className="setting-row">
           <span>
             {t.sound}
@@ -448,6 +485,12 @@ export default function App({
             onChange={(event) => dispatch({ type: 'settings', motion: event.target.checked })}
           />
         </label>
+        {account && (
+          <section className="account-panel" aria-labelledby="account-title">
+            <h3 id="account-title">{t.accountTitle}</h3>
+            {account}
+          </section>
+        )}
         <details className="adult-panel">
           <summary>{t.forAdults}</summary>
           <BackupPanel

@@ -4,6 +4,10 @@ Una aventura en castellano para practicar las tablas del 1 al 10. La niña da vi
 
 **React + TypeScript + Vite. Sin anuncios ni analítica.** Se puede jugar sin cuenta: la partida permanece en el navegador. Opcionalmente, una cuenta con Firebase sincroniza la partida entre dispositivos.
 
+## Nombre
+
+**Ajustes → Tu nombre** (o **¿Cómo te llamas?** bajo el saludo de Luma) guarda un apodo opcional de hasta 20 caracteres. Aparece en el saludo y al completar un refugio. Se guarda en la partida (campo opcional `name`), así que viaja con la cuenta y con las copias; las partidas sin nombre siguen siendo válidas y no requiere migración.
+
 ## Idiomas
 
 Castellano por defecto. El botón **EN / ES** de la cabecera cambia a inglés y viceversa. La elección se guarda en `luciernagas.language`, separada de la partida, así que cambiar de idioma no modifica el progreso. Los textos están en `src/i18n.tsx` y los nombres y descripciones de refugios en `src/content.ts`.
@@ -169,7 +173,7 @@ El mapa responde a lo aprendido mediante el progreso de la aventura. El desbloqu
 - Sin cuenta no se envían respuestas, tiempos ni progreso, y el SDK de Firebase ni siquiera se descarga. Con cuenta, la partida se guarda en Firestore (ver más abajo). No se utilizan rastreadores.
 - Borrar los datos del navegador elimina el progreso. No se solicitan nombres, edad u otros datos personales.
 - Botones grandes, navegación por teclado, foco visible, mensajes de estado y ayudas con símbolos y texto.
-- El diálogo de ajustes atrapa el foco y se cierra con Escape. Se respeta `prefers-reduced-motion`, además del interruptor propio de animaciones. Sonido desactivado inicialmente.
+- El diálogo de ajustes atrapa el foco y se cierra con Escape. Se respeta `prefers-reduced-motion`, además del interruptor propio de animaciones. Sonido activado inicialmente en partidas nuevas; las existentes conservan su ajuste.
 
 ## Conservar y trasladar la partida
 
@@ -190,10 +194,11 @@ Las actualizaciones mantienen la clave y el formato actuales. Un cambio futuro d
 
 ## Sincronización con cuenta (Firebase)
 
-Opcional. **Entrar o crear cuenta** (barra superior de la isla) usa Firebase Authentication con correo y contraseña. La partida se guarda en Firestore, en `players/{uid}`, con un número de revisión.
+Opcional. **Entrar o crear cuenta** (invitación bajo la cabecera, que se puede cerrar con ×, o **Ajustes → Tu cuenta**) usa Firebase Authentication con correo y contraseña. La partida se guarda en Firestore, en `players/{uid}`, con un número de revisión.
 
 - El SDK de Firebase se carga solo al pulsar **Entrar o crear cuenta**, o al abrir el juego en un dispositivo donde ya se inició sesión.
 - Cada cuenta tiene su copia local separada (`luciernagas.account.{uid}.*`). La partida sin cuenta (`luciernagas.progress.v1`) no se modifica al entrar ni al salir.
+- Con sesión iniciada, **Ajustes → Tu cuenta** muestra el estado y permite sincronizar o cerrar sesión. Solo aparece un aviso sobre el juego si falla la sincronización.
 - Al entrar por primera vez se puede **llevar la partida de este dispositivo** a la cuenta o empezar una isla nueva.
 - Se guarda primero en local y se sube a los pocos instantes. Sin conexión se sigue jugando y se reintenta al volver la conexión, al recuperar el foco y cada 30 s.
 - Si dos dispositivos avanzan por separado, se detecta por la revisión y se pregunta cuál continuar. Antes se guardan ambas versiones en `…conflict-local` y `…conflict-remote`.

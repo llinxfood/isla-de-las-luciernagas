@@ -1,4 +1,11 @@
-import { freshProgress, TABLE_ORDER, SESSION_LENGTH, type Progress, type FactId } from './model';
+import {
+  freshProgress,
+  MAX_NAME_LENGTH,
+  TABLE_ORDER,
+  SESSION_LENGTH,
+  type Progress,
+  type FactId,
+} from './model';
 // Keep this key stable across releases; schema changes need an explicit migration.
 export const STORAGE_KEY = 'luciernagas.progress.v1';
 export const BACKUP_KEY = `${STORAGE_KEY}.backup`;
@@ -21,6 +28,11 @@ export function isProgress(value: unknown): value is Progress {
   )
     return false;
   if (typeof value.settings.sound !== 'boolean' || typeof value.settings.motion !== 'boolean')
+    return false;
+  if (
+    'name' in value &&
+    (typeof value.name !== 'string' || !value.name.trim() || value.name.length > MAX_NAME_LENGTH)
+  )
     return false;
   if (
     !integer(value.missions) ||

@@ -974,6 +974,26 @@ button:active:not(:disabled) {
   height: 30px;
   accent-color: var(--green);
 }
+.setting-row.name-row input {
+  width: min(220px, 55%);
+  height: auto;
+  min-height: 48px;
+  font: inherit;
+  padding: 8px 12px;
+  background: #fff;
+  color: #193d34;
+  border: 2px solid #6e8066;
+  border-radius: 12px;
+}
+.account-panel {
+  padding: 18px 0 4px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+.account-panel h3 {
+  margin: 0 0 6px;
+  font-size: 17px;
+}
 .adult-panel {
   margin: 20px 0;
   font-size: 13px;
@@ -1552,4 +1572,16 @@ html[data-motion='off'] *::after {
     min-width: 42px;
     margin-left: 0;
   }
+}
+.account-bar-close {
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 22px;
+  background: transparent;
+  margin-left: auto;
+}
+.luma-message .ask-name {
+  display: block;
+  margin-top: 6px;
+  font-size: 14px;
 }

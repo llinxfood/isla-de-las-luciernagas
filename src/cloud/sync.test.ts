@@ -90,7 +90,7 @@ it('mantiene cambios realizados mientras una escritura está en vuelo', async ()
   const storage = memory();
   const initial = JSON.stringify(freshProgress());
   storage.setItem(STORAGE_KEY, initial);
-  const changed = JSON.stringify({ ...freshProgress(), settings: { sound: true, motion: true } });
+  const changed = JSON.stringify({ ...freshProgress(), settings: { sound: false, motion: true } });
   const remote = cloud();
   let first = true;
   const session = new SyncSession(storage, {

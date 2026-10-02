@@ -10,6 +10,22 @@ export const firebaseConfig = {
 export const firebaseConfigured =
   import.meta.env.VITE_FIREBASE_ENABLED !== 'false' && Object.values(firebaseConfig).every(Boolean);
 
+const INVITE_KEY = 'luciernagas.account-invite.closed';
+export function inviteClosed() {
+  try {
+    return window.localStorage.getItem(INVITE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+export function closeInvite() {
+  try {
+    window.localStorage.setItem(INVITE_KEY, '1');
+  } catch {
+    /* It will simply show again next time. */
+  }
+}
+
 /** Remembers that this device signed in, so Firebase loads at startup only when needed. */
 const SESSION_KEY = 'luciernagas.cloud.session';
 export function hadCloudSession() {

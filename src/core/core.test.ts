@@ -11,6 +11,7 @@ import {
   type Progress,
 } from './model';
 import { isProgress, loadProgress, saveProgress, STORAGE_KEY } from './storage';
+import { legacySave } from '../../tests/fixtures/progress-v1';
 const now = 1_800_000_000_000;
 const start = (progress = freshProgress(), table = 1) =>
   gameReducer(progress, { type: 'start', table, now, random: () => 0.5 });
@@ -221,5 +222,23 @@ describe('persistencia', () => {
     };
     expect(loadProgress(storage).progress).toEqual(freshProgress());
     expect(saveProgress(storage, start())).toBe(false);
+  });
+});
+describe('nombre y ajustes iniciales', () => {
+  it('empieza con sonido y animaciones activados', () => {
+    expect(freshProgress().settings).toEqual({ sound: true, motion: true });
+  });
+  it('guarda un apodo opcional y lo elimina si queda vacío', () => {
+    const named = gameReducer(freshProgress(), { type: 'name', name: 'Ana María' });
+    expect(named.name).toBe('Ana María');
+    expect(isProgress(named)).toBe(true);
+    expect(gameReducer(named, { type: 'name', name: '   ' })).not.toHaveProperty('name');
+    expect(gameReducer(named, { type: 'name', name: 'x'.repeat(40) }).name).toHaveLength(20);
+  });
+  it('acepta partidas sin nombre y rechaza nombres no válidos', () => {
+    expect(isProgress(JSON.parse(legacySave))).toBe(true);
+    expect(isProgress({ ...freshProgress(), name: '' })).toBe(false);
+    expect(isProgress({ ...freshProgress(), name: 7 })).toBe(false);
+    expect(isProgress({ ...freshProgress(), name: 'x'.repeat(21) })).toBe(false);
   });
 });

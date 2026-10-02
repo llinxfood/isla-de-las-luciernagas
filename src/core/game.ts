@@ -1,5 +1,11 @@
 import { answerOptions, recordAttempt, selectFact } from './learning';
-import { SESSION_LENGTH, unlockedTables, type Progress, type Question } from './model';
+import {
+  MAX_NAME_LENGTH,
+  SESSION_LENGTH,
+  unlockedTables,
+  type Progress,
+  type Question,
+} from './model';
 export type GameAction =
   | { type: 'restore'; progress: Progress }
   | { type: 'start'; table: number; now: number; random?: () => number }
@@ -8,7 +14,8 @@ export type GameAction =
   | { type: 'next'; now: number; random?: () => number }
   | { type: 'continue'; now: number; random?: () => number }
   | { type: 'claim'; decoration: 'flowers' | 'mushrooms' | 'crystals' }
-  | { type: 'settings'; sound?: boolean; motion?: boolean };
+  | { type: 'settings'; sound?: boolean; motion?: boolean }
+  | { type: 'name'; name: string };
 function question(progress: Progress, table: number, now: number, random = Math.random): Question {
   const history = progress.expedition?.questions.map((q) => q.fact) ?? [];
   const fact = selectFact(progress, table, history, now, random);
@@ -22,6 +29,12 @@ function question(progress: Progress, table: number, now: number, random = Math.
 }
 export function gameReducer(progress: Progress, action: GameAction): Progress {
   if (action.type === 'restore') return action.progress;
+  if (action.type === 'name') {
+    // Spaces are kept while typing ("Ana María"); a blank name removes the field.
+    const next: Progress = { ...progress, name: action.name.slice(0, MAX_NAME_LENGTH) };
+    if (!next.name?.trim()) delete next.name;
+    return next;
+  }
   const expedition = progress.expedition;
   if (action.type === 'settings')
     return {

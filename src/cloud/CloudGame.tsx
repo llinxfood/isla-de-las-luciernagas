@@ -13,7 +13,7 @@ import { loadProgress, restoreProgress, STORAGE_KEY } from '../core/storage';
 import { rememberCloudSession } from './config';
 import { cloudFor, firebaseServices } from './firebase';
 import { LanguageToggle, useI18n, type TextKey } from '../i18n';
-import { GuestBar } from './GuestBar';
+import { GuestBar, GuestPanel } from './GuestBar';
 import { accountStorage, SyncSession } from './sync';
 
 function authMessage(error: unknown): TextKey {
@@ -65,7 +65,11 @@ export default function CloudGame({ openLogin }: { openLogin: boolean }) {
       ) : user ? (
         <SignedGame key={user.uid} user={user} onLogout={logout} />
       ) : (
-        <App key="guest" accountControls={<GuestBar onEnter={() => setOpen(true)} />} />
+        <App
+          key="guest"
+          notice={<GuestBar onEnter={() => setOpen(true)} />}
+          account={<GuestPanel onEnter={() => setOpen(true)} />}
+        />
       )}
       {open && user === null && <LoginDialog onClose={() => setOpen(false)} />}
     </>
@@ -238,14 +242,25 @@ function SyncedGame({
   }
   const hasLocal = storage.getItem(STORAGE_KEY) !== null;
   const blocked = state.status === 'loading' || state.status === 'conflict' || !hasLocal;
-  const controls = (
-    <div className="account-bar">
-      <span role="status">{core(state.message)}</span>
+  const panel = (
+    <>
+      <p role="status">{core(state.message)}</p>
+      <div className="backup-actions">
+        <button className="secondary" onClick={() => void session.sync()}>
+          {t.syncNow}
+        </button>
+        <button className="secondary" onClick={() => void onLogout()}>
+          {t.signOut}
+        </button>
+      </div>
+    </>
+  );
+  // Only a sync problem deserves space above the game; everything else lives in Settings.
+  const notice = state.status === 'error' && (
+    <div className="account-bar" role="alert">
+      <span>{core(state.message)}</span>
       <button className="text-button" onClick={() => void session.sync()}>
-        {t.syncNow}
-      </button>
-      <button className="text-button" onClick={() => void onLogout()}>
-        {t.signOut}
+        {t.retry}
       </button>
     </div>
   );
@@ -295,7 +310,8 @@ function SyncedGame({
       key={state.generation}
       storage={storage}
       onSaved={session.changed}
-      accountControls={controls}
+      notice={notice}
+      account={panel}
       cloudAccount
     />
   );
