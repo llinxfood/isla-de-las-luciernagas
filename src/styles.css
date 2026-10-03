@@ -1585,3 +1585,38 @@ html[data-motion='off'] *::after {
   margin-top: 6px;
   font-size: 14px;
 }
+
+.play-time-settings {
+  padding: 16px 0;
+  border-bottom: 1px solid #c4cfb8;
+}
+.play-time-settings form {
+  display: grid;
+  gap: 16px;
+}
+.play-time-settings label:not(.setting-row) {
+  display: grid;
+  gap: 8px;
+}
+.play-time-settings input:not([type='checkbox']) {
+  width: 100%;
+  max-width: 280px;
+  min-height: 52px;
+  padding: 10px;
+  font: inherit;
+  border: 2px solid #6e8066;
+  border-radius: 12px;
+  background: white;
+  color: #193d34;
+}
+.time-warning {
+  padding: 16px 20px;
+  background: #fff3ce;
+  color: #45370f;
+  border-radius: 16px;
+  font-weight: 700;
+}
+.time-rest {
+  max-width: 720px;
+  margin: 32px auto;
+}

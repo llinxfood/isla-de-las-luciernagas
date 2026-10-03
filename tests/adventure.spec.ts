@@ -286,3 +286,123 @@ test('el nombre aparece en el saludo y la invitación a la cuenta se puede cerra
   await expect(page.getByRole('button', { name: 'Cerrar invitación' })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
+
+test('configura un límite con PIN, pausa en ajustes y conserva el reto al agotarse', async ({
+  page,
+}, testInfo) => {
+  await page.clock.install({ time: new Date('2026-10-03T10:00:00Z') });
+  await page.clock.pauseAt(new Date('2026-10-03T10:00:01Z'));
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Ajustes', exact: true }).click();
+  await page.getByText('Para acompañantes', { exact: true }).click();
+  await page.getByRole('checkbox', { name: 'Activar límite diario' }).check();
+  await page.getByLabel('Minutos al día (5–120)').fill('5');
+  await page.getByLabel('Crea un PIN de acompañante (4 cifras)').fill('2468');
+  await page.getByLabel('Repite el PIN', { exact: true }).fill('2468');
+  await page.getByRole('button', { name: 'Guardar límite', exact: true }).click();
+  await expect(page.getByText('Límite guardado.', { exact: false })).toBeVisible();
+  const savedPin = await page.evaluate(
+    (key) => JSON.parse(localStorage.getItem(key)!).playTime.pin,
+    key,
+  );
+  expect(savedPin.hash).toHaveLength(64);
+  await page.getByRole('button', { name: 'Listo', exact: true }).click();
+  await page.getByRole('button', { name: '¡Vamos a explorar!' }).click();
+  const fact = await currentFact(page);
+  await page.clock.fastForward(240000);
+  await expect(page.getByText('Queda un minuto. Pronto descansaremos.')).toBeVisible();
+  await page.getByRole('button', { name: 'Ajustes', exact: true }).click();
+  const paused = await page.evaluate(
+    (key) => JSON.parse(localStorage.getItem(key)!).playTime.usedMs,
+    key,
+  );
+  await page.clock.fastForward(120000);
+  expect(
+    await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).playTime.usedMs, key),
+  ).toBe(paused);
+  await page.getByRole('button', { name: 'Listo', exact: true }).click();
+  await page.clock.fastForward(60000);
+  await expect(page.getByRole('heading', { name: 'La isla descansa' })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Entrar o crear cuenta' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: `${fact.a} × ${fact.b} = ?` })).toHaveCount(0);
+  expect((await currentFact(page)).id).toBe(fact.id);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'La isla descansa' })).toBeVisible();
+  await page.getByRole('button', { name: 'Ajustes de acompañante', exact: true }).click();
+  await page.getByText('Para acompañantes', { exact: true }).click();
+  await page.getByLabel('PIN de acompañante', { exact: true }).fill('1111');
+  await page.getByRole('button', { name: 'Abrir ajustes de acompañante' }).click();
+  await expect(page.getByRole('alert')).toContainText('El PIN no coincide');
+  await expect(page.getByRole('button', { name: 'Restaurar esta copia' })).toHaveCount(0);
+  await page.getByLabel('PIN de acompañante', { exact: true }).fill('2468');
+  await page.getByRole('button', { name: 'Abrir ajustes de acompañante' }).click();
+  await expect(page.getByRole('checkbox', { name: 'Activar límite diario' })).toBeVisible();
+  await page.screenshot({
+    path: `test-results/time-settings-${testInfo.project.name}.png`,
+    fullPage: true,
+  });
+  await page.getByRole('checkbox', { name: 'Activar límite diario' }).uncheck();
+  await page.getByRole('button', { name: 'Guardar límite', exact: true }).click();
+  await page.getByRole('button', { name: 'Listo', exact: true }).click();
+  await page.getByRole('button', { name: 'Continuar mi aventura' }).click();
+  await expect(page.getByRole('heading', { name: `${fact.a} × ${fact.b} = ?` })).toBeVisible();
+  expect(
+    await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).playTime.usedMs, key),
+  ).toBe(300000);
+});
+
+test('una pestaña oculta no consume tiempo y mañana permite continuar sin perder la partida', async ({
+  page,
+}, testInfo) => {
+  const { legacySave } = await import('./fixtures/progress-v1');
+  await page.clock.install({ time: new Date('2026-10-03T10:00:00Z') });
+  await page.clock.pauseAt(new Date('2026-10-03T10:00:01Z'));
+  await page.goto('./');
+  await page.evaluate(
+    ({ key, legacySave }) => {
+      const now = new Date();
+      const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      localStorage.setItem(
+        key,
+        JSON.stringify({
+          ...JSON.parse(legacySave),
+          playTime: {
+            dailyMinutes: 5,
+            day,
+            usedMs: 299000,
+            pin: { salt: 'a'.repeat(32), hash: 'b'.repeat(64) },
+          },
+        }),
+      );
+    },
+    { key, legacySave },
+  );
+  await page.reload();
+  await page.getByRole('button', { name: 'Continuar mi aventura' }).click();
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await page.clock.fastForward(60000);
+  expect(
+    await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).playTime.usedMs, key),
+  ).toBe(299000);
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, value: false });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await page.clock.fastForward(1000);
+  await expect(page.getByRole('heading', { name: 'La isla descansa' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({
+    path: `test-results/time-rest-${testInfo.project.name}.png`,
+    fullPage: true,
+  });
+  await page.clock.fastForward(86400000);
+  await expect(page.getByRole('button', { name: 'Continuar mi aventura' })).toBeVisible();
+  await page.getByRole('button', { name: 'Continuar mi aventura' }).click();
+  await expect(page.getByRole('heading', { name: '10 × 6 = ?' })).toBeVisible();
+  expect(
+    await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).playTime.usedMs, key),
+  ).toBe(0);
+});

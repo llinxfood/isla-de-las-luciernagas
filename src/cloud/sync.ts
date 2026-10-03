@@ -81,15 +81,18 @@ export class SyncSession {
   stop() {
     this.stopped = true;
     clearTimeout(this.timer);
+    this.timer = undefined;
   }
   changed = () => {
     if (this.stopped || this.state.status === 'conflict') return;
     if (this.storage.getItem(STORAGE_KEY) === this.base?.payload) return;
     this.publish('pending', 'Guardando tu isla…');
-    clearTimeout(this.timer);
-    this.timer = setTimeout(() => {
-      void this.sync();
-    }, 350);
+    // A fixed window coalesces timer ticks without indefinitely delaying an active game.
+    if (this.timer === undefined)
+      this.timer = setTimeout(() => {
+        this.timer = undefined;
+        void this.sync();
+      }, 5000);
   };
   private remember(save: CloudSave) {
     this.storage.setItem(BASE_KEY, JSON.stringify(save));

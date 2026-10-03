@@ -1,3 +1,6 @@
+import { ParentGate, PlayTimeSettings } from './components/PlayTimeSettings';
+import { usePlayTime } from './components/usePlayTime';
+import { remainingPlayMs } from './core/playTime';
 import { useEffect, useReducer, useRef, useState, type ReactNode } from 'react';
 import { gameReducer } from './core/game';
 import {
@@ -39,7 +42,7 @@ export default function App({
 }) {
   const { t, content, core } = useI18n();
   const [initial] = useState(() => initialState(storage));
-  const [progress, dispatch] = useReducer(gameReducer, initial.progress);
+  const [progress, reduce] = useReducer(gameReducer, initial.progress);
   const [screen, setScreen] = useState<'island' | 'collection' | 'game'>('island');
   const [settings, setSettings] = useState(false);
   const [selected, setSelected] = useState(
@@ -53,6 +56,7 @@ export default function App({
   const settingsDialog = useRef<HTMLDialogElement>(null);
   const settingsButton = useRef<HTMLButtonElement>(null);
   const nameInput = useRef<HTMLInputElement>(null);
+  const restTitle = useRef<HTMLHeadingElement>(null);
   const focusName = useRef(false);
   useEffect(() => {
     let saved = false;
@@ -105,7 +109,28 @@ export default function App({
   const refuge = content.refuges[refugeIndex];
   const expedition = progress.expedition;
   const isPlaying = screen === 'game' && expedition;
+  const time = usePlayTime(
+    progress,
+    reduce,
+    !!isPlaying &&
+      !settings &&
+      expedition?.phase !== 'break' &&
+      remainingPlayMs(progress, Date.now()) > 0,
+  );
+  const dispatch: typeof reduce = (action) => {
+    if (['start', 'hint', 'answer', 'next', 'continue', 'claim'].includes(action.type))
+      time.flush();
+    reduce(action);
+  };
+  const timeNotice = time.remainingMs > 0 && time.remainingMs <= 60_000;
+  useEffect(() => {
+    if (time.blocked) {
+      setScreen('island');
+      restTitle.current?.focus();
+    }
+  }, [time.blocked]);
   function start() {
+    if (time.blocked) return;
     if (!expedition) dispatch({ type: 'start', table: selected, now: Date.now() });
     setScreen('game');
   }
@@ -143,7 +168,10 @@ export default function App({
           ref={settingsButton}
           className="settings-button"
           aria-label={t.settings}
-          onClick={() => setSettings(true)}
+          onClick={() => {
+            time.flush();
+            setSettings(true);
+          }}
         >
           ⚙
         </button>
@@ -160,9 +188,27 @@ export default function App({
           </button>
         </div>
       )}
-      {notice}
+      {(!progress.playTime?.pin || cloudAccount) && notice}
+      {timeNotice && !time.blocked && (
+        <p className="time-warning" role="status">
+          ⌛ {t.timeEnding}
+        </p>
+      )}
       <main id="main">
-        {!isPlaying && screen === 'island' && (
+        {time.blocked && (
+          <section className="milestone time-rest" aria-labelledby="time-rest-title">
+            <Firefly happy />
+            <h1 ref={restTitle} id="time-rest-title" tabIndex={-1}>
+              {t.islandResting}
+            </h1>
+            <p>{t.restUntilTomorrow}</p>
+            <p>{t.adventureKept}</p>
+            <button className="secondary" onClick={() => setSettings(true)}>
+              {t.adultTimeAccess}
+            </button>
+          </section>
+        )}
+        {!time.blocked && !isPlaying && screen === 'island' && (
           <>
             <section className="island-hero">
               <div className="hero-copy">
@@ -298,7 +344,7 @@ export default function App({
             </footer>
           </>
         )}
-        {screen === 'collection' && (
+        {!time.blocked && screen === 'collection' && (
           <section className="collection">
             <span className="eyebrow">{t.collectionEyebrow}</span>
             <h1>{t.collectionTitle}</h1>
@@ -340,7 +386,7 @@ export default function App({
             )}
           </section>
         )}
-        {isPlaying && (
+        {!time.blocked && isPlaying && (
           <section className="expedition">
             <div className="expedition-heading">
               <button className="text-button" onClick={() => setScreen('island')}>
@@ -460,7 +506,7 @@ export default function App({
             autoComplete="off"
             maxLength={MAX_NAME_LENGTH}
             value={progress.name ?? ''}
-            onChange={(event) => dispatch({ type: 'name', name: event.target.value })}
+            onChange={(event) => reduce({ type: 'name', name: event.target.value })}
           />
         </label>
         <label className="setting-row">
@@ -485,7 +531,7 @@ export default function App({
             onChange={(event) => dispatch({ type: 'settings', motion: event.target.checked })}
           />
         </label>
-        {account && (
+        {account && !progress.playTime?.pin && (
           <section className="account-panel" aria-labelledby="account-title">
             <h3 id="account-title">{t.accountTitle}</h3>
             {account}
@@ -493,19 +539,34 @@ export default function App({
         )}
         <details className="adult-panel">
           <summary>{t.forAdults}</summary>
-          <BackupPanel
-            storage={storage}
-            progress={progress}
-            protectedSave={protectedSave}
-            onRestore={(restored) => {
-              dispatch({ type: 'restore', progress: restored });
-              setProtectedSave(false);
-              setWarning(null);
-              setScreen('island');
-              setSelected(restored.expedition?.table ?? unlockedTables(restored).at(-1)!);
-            }}
-          />
-          <AdultProgress progress={progress} />
+          {settings && (
+            <ParentGate pin={progress.playTime?.pin}>
+              {account && progress.playTime?.pin && (
+                <section className="account-panel">
+                  <h3>{t.accountTitle}</h3>
+                  {account}
+                </section>
+              )}
+              <PlayTimeSettings
+                progress={progress}
+                disabled={protectedSave}
+                onChange={(playTime) => reduce({ type: 'play-limit', playTime })}
+              />
+              <BackupPanel
+                storage={storage}
+                progress={progress}
+                protectedSave={protectedSave}
+                onRestore={(restored) => {
+                  dispatch({ type: 'restore', progress: restored });
+                  setProtectedSave(false);
+                  setWarning(null);
+                  setScreen('island');
+                  setSelected(restored.expedition?.table ?? unlockedTables(restored).at(-1)!);
+                }}
+              />
+              <AdultProgress progress={progress} />
+            </ParentGate>
+          )}
         </details>
         <p className="privacy-note">{cloudAccount ? t.privacyCloud : t.privacyLocal}</p>
         <button className="primary" onClick={() => setSettings(false)}>

@@ -1,3 +1,4 @@
+import type { PlayTime } from './playTime';
 export const TABLE_ORDER = [1, 2, 10, 5, 3, 4, 6, 7, 8, 9] as const;
 export const SESSION_LENGTH = 24;
 export type FactId = `${number}x${number}`;
@@ -31,6 +32,8 @@ export type Progress = {
   version: 1;
   /** Optional nickname. Additive field: saves without it stay valid and older versions keep it. */
   name?: string;
+  /** Optional daily allowance. Missing in historical saves means unlimited. */
+  playTime?: PlayTime;
   facts: Partial<Record<FactId, FactStats>>;
   completed: number[];
   decorations: Record<string, 'flowers' | 'mushrooms' | 'crystals'>;

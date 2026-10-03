@@ -8,6 +8,18 @@ Una aventura en castellano para practicar las tablas del 1 al 10. La niña da vi
 
 **Ajustes → Tu nombre** (o **¿Cómo te llamas?** bajo el saludo de Luma) guarda un apodo opcional de hasta 20 caracteres. Aparece en el saludo y al completar un refugio. Se guarda en la partida (campo opcional `name`), así que viaja con la cuenta y con las copias; las partidas sin nombre siguen siendo válidas y no requiere migración.
 
+## Límite diario de juego
+
+En **Ajustes → Para acompañantes → Tiempo para jugar**, activa el límite, elige entre **5 y 120 minutos al día** y crea un **PIN de cuatro cifras**. Está desactivado en las partidas existentes y en las nuevas hasta que un acompañante lo configure. Conserva el PIN: se necesita para cambiar el límite y acceder a las copias y a la recuperación de amigos. Con un PIN configurado, la gestión de cuenta también pasa a ese panel para evitar salir de la cuenta desde los ajustes infantiles. Cerrar Ajustes vuelve a bloquear el acceso.
+
+Cuenta el tiempo en los retos y en la elección del premio; las pantallas de descanso, Ajustes, la isla, la colección y las pestañas ocultas no consumen el cupo. Utiliza un reloj monotónico para medir los intervalos y guarda el consumo aproximadamente cada segundo. Avisa cuando queda un minuto y sustituye el juego por **La isla descansa** al agotarse el tiempo, conservando la pregunta y toda la partida. El día siguiente permite continuar desde la isla, sin reiniciar automáticamente una sesión de juego.
+
+El cupo se renueva según el día local del dispositivo. Reducir, desactivar o volver a activar el límite conserva lo consumido ese día; retroceder la fecha no concede un nuevo cupo. El campo opcional `playTime` se añade al formato v1 sin sustituir datos: las partidas históricas sin ese campo siguen siendo válidas y tienen tiempo ilimitado. Las pruebas incluyen el fixture histórico, copias completas y transferencia entre dos almacenes de cuenta.
+
+Con cuenta, la configuración, el hash del PIN y el consumo viajan con el resto de la partida a Firestore; se agrupan las escrituras en ventanas de cinco segundos y se puede usar **Sincronizar ahora** antes de cambiar de dispositivo. El PIN se deriva con PBKDF2 y una sal aleatoria; no se guarda en texto plano. Sin cuenta, el límite pertenece a ese navegador.
+
+Es un control dentro del juego, no un control parental del sistema. Borrar los datos locales, usar otra cuenta, modificar el reloj hacia delante o jugar desconectado en varios dispositivos puede evitarlo. Los avances simultáneos conservan el mecanismo de conflictos existente; no se garantiza un cupo global estricto mientras haya dispositivos desconectados. Para impedir esas vías, usar el control parental del dispositivo.
+
 ## Idiomas
 
 Castellano por defecto. El botón **EN / ES** de la cabecera cambia a inglés y viceversa. La elección se guarda en `luciernagas.language`, separada de la partida, así que cambiar de idioma no modifica el progreso. Los textos están en `src/i18n.tsx` y los nombres y descripciones de refugios en `src/content.ts`.

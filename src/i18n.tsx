@@ -6,6 +6,31 @@ export type Lang = 'es' | 'en';
 const LANGUAGE_KEY = 'luciernagas.language';
 
 const es = {
+  playTimeTitle: 'Tiempo para jugar',
+  playTimeDescription:
+    'Solo cuenta el tiempo en los retos y al elegir el premio. Ajustes, descansos y pestañas ocultas no cuentan. El límite se renueva al empezar un nuevo día.',
+  dailyLimit: 'Activar límite diario',
+  minutesPerDay: 'Minutos al día (5–120)',
+  newParentPin: 'Crea un PIN de acompañante (4 cifras)',
+  confirmParentPin: 'Repite el PIN',
+  parentPin: 'PIN de acompañante',
+  unlockAdults: 'Abrir ajustes de acompañante',
+  pinReminder:
+    'Guarda el PIN: lo necesitarás para cambiar el límite o recuperar copias. Este control pertenece al juego; borrar sus datos o usar otra cuenta puede evitarlo.',
+  pinWrong: 'El PIN no coincide. Vuelve a intentarlo.',
+  pinUnavailable:
+    'No se pudo guardar o comprobar el PIN. Reintenta desde una conexión HTTPS o localhost.',
+  pinMismatch: 'Escribe el mismo PIN de cuatro cifras en ambos campos.',
+  limitInvalid: 'Elige un número entero entre 5 y 120 minutos.',
+  playedToday: (minutes: number) => `Tiempo usado hoy: ${minutes} min.`,
+  saveTimeLimit: 'Guardar límite',
+  limitSaved: 'Límite guardado. El tiempo ya utilizado hoy se conserva.',
+  timeEnding: 'Queda un minuto. Pronto descansaremos.',
+  islandResting: 'La isla descansa',
+  restUntilTomorrow: '¡Buen trabajo! Mañana seguimos descubriendo.',
+  adventureKept: 'Tu aventura queda guardada aquí.',
+  adultTimeAccess: 'Ajustes de acompañante',
+
   title: 'La isla de las luciérnagas',
   switchTo: 'EN',
   switchLabel: 'Switch to English',
@@ -219,6 +244,30 @@ export type TextKey = {
 }[keyof Strings];
 
 const en: Strings = {
+  playTimeTitle: 'Time to play',
+  playTimeDescription:
+    'Only challenges and choosing a reward count. Settings, rest screens and hidden tabs do not count. The allowance renews at the start of a new day.',
+  dailyLimit: 'Enable daily limit',
+  minutesPerDay: 'Minutes per day (5–120)',
+  newParentPin: 'Create a grown-up PIN (4 digits)',
+  confirmParentPin: 'Repeat the PIN',
+  parentPin: 'Grown-up PIN',
+  unlockAdults: 'Open grown-up settings',
+  pinReminder:
+    'Keep the PIN: you will need it to change the limit or restore copies. This is an in-game control; clearing its data or using another account can bypass it.',
+  pinWrong: 'The PIN does not match. Try again.',
+  pinUnavailable: 'Could not save or check the PIN. Try again using HTTPS or localhost.',
+  pinMismatch: 'Enter the same four-digit PIN in both fields.',
+  limitInvalid: 'Choose a whole number between 5 and 120 minutes.',
+  playedToday: (minutes: number) => `Time used today: ${minutes} min.`,
+  saveTimeLimit: 'Save time limit',
+  limitSaved: 'Limit saved. Time already used today is kept.',
+  timeEnding: 'One minute left. We will rest soon.',
+  islandResting: 'The island is resting',
+  restUntilTomorrow: 'Well done! Tomorrow we will explore again.',
+  adventureKept: 'Your adventure is kept here.',
+  adultTimeAccess: 'Grown-up settings',
+
   title: 'Firefly Island',
   switchTo: 'ES',
   switchLabel: 'Cambiar a español',

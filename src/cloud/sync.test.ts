@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { legacySave } from '../../tests/fixtures/progress-v1';
 import { freshProgress } from '../core/model';
 import { STORAGE_KEY } from '../core/storage';
@@ -166,4 +166,50 @@ it('rechaza partidas incompatibles y conserva el progreso ante un error local', 
   expect(session.state.status).toBe('error');
   expect(storage.getItem(STORAGE_KEY)).toBe(legacySave);
   session.stop();
+});
+
+it('el límite, el PIN y el tiempo utilizado viajan con la cuenta a otro dispositivo', async () => {
+  const payload = JSON.stringify({
+    ...JSON.parse(legacySave),
+    playTime: {
+      dailyMinutes: 15,
+      day: '2026-10-03',
+      usedMs: 900000,
+      pin: { salt: 'a'.repeat(32), hash: 'b'.repeat(64) },
+    },
+  });
+  const first = memory();
+  first.setItem(STORAGE_KEY, payload);
+  const remote = cloud();
+  const uploader = new SyncSession(first, remote.port);
+  await uploader.start();
+  const second = memory();
+  const downloader = new SyncSession(second, remote.port);
+  await downloader.start();
+  expect(JSON.parse(second.getItem(STORAGE_KEY)!).playTime).toEqual(JSON.parse(payload).playTime);
+  uploader.stop();
+  downloader.stop();
+});
+
+it('agrupa cambios continuos sin aplazar indefinidamente su subida', async () => {
+  vi.useFakeTimers();
+  const storage = memory();
+  storage.setItem(STORAGE_KEY, legacySave);
+  const remote = cloud();
+  const session = new SyncSession(storage, remote.port);
+  try {
+    await session.start();
+    for (let i = 0; i < 12; i++) {
+      storage.setItem(STORAGE_KEY, JSON.stringify({ ...JSON.parse(legacySave), lights: 100 + i }));
+      session.changed();
+      await vi.advanceTimersByTimeAsync(1000);
+    }
+    expect(remote.get()?.revision).toBe(3);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(remote.get()?.payload).toBe(storage.getItem(STORAGE_KEY));
+    expect(session.state.status).toBe('saved');
+  } finally {
+    session.stop();
+    vi.useRealTimers();
+  }
 });

@@ -1,5 +1,6 @@
 # Acuerdos de trabajo
 
+- Antes de una ampliación, leer `PROJECT_CONTEXT.md` y comprobar el estado actual del repositorio. La primera versión está terminada; ampliar a partir de ella conservando las partidas.
 - Ejecutar `npm test` después de modificar archivos JavaScript; ejecutar también los tests tras cambios relevantes en TypeScript.
 - Preferir `pnpm` para instalar dependencias.
 - Pedir confirmación antes de añadir dependencias de producción.

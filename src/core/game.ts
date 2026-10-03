@@ -1,3 +1,4 @@
+import { isPlayTime, recordPlayTime, remainingPlayMs, type PlayTime } from './playTime';
 import { answerOptions, recordAttempt, selectFact } from './learning';
 import {
   MAX_NAME_LENGTH,
@@ -8,6 +9,8 @@ import {
 } from './model';
 export type GameAction =
   | { type: 'restore'; progress: Progress }
+  | { type: 'play-time'; elapsedMs: number; now: number }
+  | { type: 'play-limit'; playTime: PlayTime }
   | { type: 'start'; table: number; now: number; random?: () => number }
   | { type: 'hint' }
   | { type: 'answer'; answer: number; durationMs: number; now: number }
@@ -29,6 +32,9 @@ function question(progress: Progress, table: number, now: number, random = Math.
 }
 export function gameReducer(progress: Progress, action: GameAction): Progress {
   if (action.type === 'restore') return action.progress;
+  if (action.type === 'play-time') return recordPlayTime(progress, action.elapsedMs, action.now);
+  if (action.type === 'play-limit')
+    return isPlayTime(action.playTime) ? { ...progress, playTime: action.playTime } : progress;
   if (action.type === 'name') {
     // Spaces are kept while typing ("Ana María"); a blank name removes the field.
     const next: Progress = { ...progress, name: action.name.slice(0, MAX_NAME_LENGTH) };
@@ -36,6 +42,11 @@ export function gameReducer(progress: Progress, action: GameAction): Progress {
     return next;
   }
   const expedition = progress.expedition;
+  if (
+    ['start', 'hint', 'answer', 'next', 'continue', 'claim'].includes(action.type) &&
+    remainingPlayMs(progress, 'now' in action ? action.now : Date.now()) === 0
+  )
+    return progress;
   if (action.type === 'settings')
     return {
       ...progress,

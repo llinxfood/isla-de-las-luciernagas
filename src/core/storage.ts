@@ -1,3 +1,4 @@
+import { isPlayTime } from './playTime';
 import {
   freshProgress,
   MAX_NAME_LENGTH,
@@ -27,6 +28,7 @@ export function isProgress(value: unknown): value is Progress {
     !object(value.decorations)
   )
     return false;
+  if ('playTime' in value && !isPlayTime(value.playTime)) return false;
   if (typeof value.settings.sound !== 'boolean' || typeof value.settings.motion !== 'boolean')
     return false;
   if (
