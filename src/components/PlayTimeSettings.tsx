@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import type { Progress } from '../core/model';
-import { localDay, usedToday, type PlayTime } from '../core/playTime';
+import { DEFAULT_DAILY_MINUTES, localDay, usedToday, type PlayTime } from '../core/playTime';
 import { useI18n } from '../i18n';
 import { checkParentPin, createParentPin } from './parentPin';
 
@@ -63,8 +63,10 @@ export function PlayTimeSettings({
   onChange: (time: PlayTime) => void;
 }) {
   const { t } = useI18n();
-  const [enabled, setEnabled] = useState(!!progress.playTime?.dailyMinutes);
-  const [minutes, setMinutes] = useState(String(progress.playTime?.dailyMinutes || 15));
+  const [enabled, setEnabled] = useState(progress.playTime?.dailyMinutes !== 0);
+  const [minutes, setMinutes] = useState(
+    String(progress.playTime?.dailyMinutes || DEFAULT_DAILY_MINUTES),
+  );
   const [pin, setPin] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [busy, setBusy] = useState(false);
@@ -85,11 +87,7 @@ export function PlayTimeSettings({
         return;
       }
       const existing = progress.playTime;
-      if (!existing && !enabled) {
-        setSaved(true);
-        return;
-      }
-      if (!existing && (!/^\d{4}$/.test(pin) || pin !== confirmation)) {
+      if (!existing?.pin && (!/^\d{4}$/.test(pin) || pin !== confirmation)) {
         setError(t.pinMismatch);
         return;
       }
@@ -150,37 +148,37 @@ export function PlayTimeSettings({
                 }}
               />
             </label>
-            {!progress.playTime && (
-              <>
-                <label>
-                  {t.newParentPin}
-                  <input
-                    type="password"
-                    inputMode="numeric"
-                    autoComplete="new-password"
-                    pattern="[0-9]{4}"
-                    maxLength={4}
-                    required
-                    value={pin}
-                    onChange={(event) => setPin(event.target.value.replace(/\D/g, ''))}
-                  />
-                </label>
-                <label>
-                  {t.confirmParentPin}
-                  <input
-                    type="password"
-                    inputMode="numeric"
-                    autoComplete="new-password"
-                    pattern="[0-9]{4}"
-                    maxLength={4}
-                    required
-                    value={confirmation}
-                    onChange={(event) => setConfirmation(event.target.value.replace(/\D/g, ''))}
-                  />
-                </label>
-                <p>{t.pinReminder}</p>
-              </>
-            )}
+          </>
+        )}
+        {!progress.playTime?.pin && (
+          <>
+            <label>
+              {t.newParentPin}
+              <input
+                type="password"
+                inputMode="numeric"
+                autoComplete="new-password"
+                pattern="[0-9]{4}"
+                maxLength={4}
+                required
+                value={pin}
+                onChange={(event) => setPin(event.target.value.replace(/\D/g, ''))}
+              />
+            </label>
+            <label>
+              {t.confirmParentPin}
+              <input
+                type="password"
+                inputMode="numeric"
+                autoComplete="new-password"
+                pattern="[0-9]{4}"
+                maxLength={4}
+                required
+                value={confirmation}
+                onChange={(event) => setConfirmation(event.target.value.replace(/\D/g, ''))}
+              />
+            </label>
+            <p>{t.pinReminder}</p>
           </>
         )}
         {progress.playTime && (

@@ -1,4 +1,4 @@
-import type { PlayTime } from './playTime';
+import { defaultPlayTime, type PlayTime } from './playTime';
 export const TABLE_ORDER = [1, 2, 10, 5, 3, 4, 6, 7, 8, 9] as const;
 export const SESSION_LENGTH = 24;
 export type FactId = `${number}x${number}`;
@@ -32,7 +32,7 @@ export type Progress = {
   version: 1;
   /** Optional nickname. Additive field: saves without it stay valid and older versions keep it. */
   name?: string;
-  /** Optional daily allowance. Missing in historical saves means unlimited. */
+  /** Optional daily allowance. Missing in historical saves is migrated to the default allowance. */
   playTime?: PlayTime;
   facts: Partial<Record<FactId, FactStats>>;
   completed: number[];
@@ -53,9 +53,10 @@ export const emptyStats = (): FactStats => ({
   dueAt: 0,
   level: 0,
 });
-export function freshProgress(): Progress {
+export function freshProgress(now = Date.now()): Progress {
   return {
     version: 1,
+    playTime: defaultPlayTime(now),
     facts: {},
     completed: [],
     decorations: {},

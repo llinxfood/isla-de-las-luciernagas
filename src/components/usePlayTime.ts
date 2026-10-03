@@ -11,7 +11,7 @@ export function usePlayTime(
 ) {
   const clock = useRef<number | null>(null);
   const [now, setNow] = useState(Date.now);
-  const enabled = !!progress.playTime?.dailyMinutes;
+  const enabled = progress.playTime?.dailyMinutes !== 0;
   const flush = useCallback(() => {
     const next = performance.now();
     if (clock.current !== null) {

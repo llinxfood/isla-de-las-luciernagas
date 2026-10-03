@@ -165,7 +165,11 @@ test('una partida anterior sobrevive a la actualización y se puede exportar y r
   expect(path).toBeTruthy();
   const { readFile } = await import('node:fs/promises');
   const content = await readFile(path!, 'utf8');
-  expect(JSON.parse(content).progress).toEqual(JSON.parse(legacySave));
+  const exportedProgress = JSON.parse(content).progress;
+  const { playTime, ...historicalFields } = exportedProgress;
+  expect(historicalFields).toEqual(JSON.parse(legacySave));
+  expect(playTime.dailyMinutes).toBe(20);
+  expect(playTime.usedMs).toBe(0);
   // Change the live save, then check that merely reading/cancelling a backup never changes it.
   await page.getByRole('checkbox', { name: /Sonidos/ }).uncheck();
   const current = await page.evaluate((key) => localStorage.getItem(key), key);
@@ -198,7 +202,7 @@ test('una partida anterior sobrevive a la actualización y se puede exportar y r
   );
   await page.reload();
   expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), key)).toEqual(
-    JSON.parse(legacySave),
+    exportedProgress,
   );
   await page.getByRole('button', { name: 'Continuar mi aventura' }).click();
   await expect(page.getByRole('heading', { name: '10 × 6 = ?' })).toBeVisible();
@@ -241,7 +245,7 @@ test('recupera cuatro amigos y conserva la partida tras recargar', async ({ page
   await page.reload();
   const recovered = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), key);
   expect(recovered).toEqual({
-    ...JSON.parse(legacySave),
+    ...JSON.parse(before!),
     completed: [1, 2, 10, 5],
     decorations: { '1': 'flowers', '2': 'crystals', '10': 'flowers', '5': 'flowers' },
   });
@@ -405,4 +409,35 @@ test('una pestaña oculta no consume tiempo y mañana permite continuar sin perd
   expect(
     await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).playTime.usedMs, key),
   ).toBe(0);
+});
+
+test('limita a veinte minutos sin configuración y permite ampliar conservando el consumo', async ({
+  page,
+}) => {
+  await page.clock.install({ time: new Date('2026-10-03T10:00:00Z') });
+  await page.clock.pauseAt(new Date('2026-10-03T10:00:01Z'));
+  await page.goto('./');
+  expect(
+    await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).playTime.dailyMinutes, key),
+  ).toBe(20);
+  await page.getByRole('button', { name: '¡Vamos a explorar!' }).click();
+  const fact = await currentFact(page);
+  await page.clock.fastForward(1200000);
+  await expect(page.getByRole('heading', { name: 'La isla descansa' })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'La isla descansa' })).toBeVisible();
+  await page.getByRole('button', { name: 'Ajustes de acompañante' }).click();
+  await page.getByText('Para acompañantes', { exact: true }).click();
+  await expect(page.getByLabel('Minutos al día (5–120)')).toHaveValue('20');
+  await page.getByLabel('Minutos al día (5–120)').fill('30');
+  await page.getByLabel('Crea un PIN de acompañante (4 cifras)').fill('2468');
+  await page.getByLabel('Repite el PIN', { exact: true }).fill('2468');
+  await page.getByRole('button', { name: 'Guardar límite' }).click();
+  await expect(page.getByText('Límite guardado.', { exact: false })).toBeVisible();
+  const time = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).playTime, key);
+  expect(time.dailyMinutes).toBe(30);
+  expect(time.usedMs).toBe(1200000);
+  await page.getByRole('button', { name: 'Listo', exact: true }).click();
+  await page.getByRole('button', { name: 'Continuar mi aventura' }).click();
+  await expect(page.getByRole('heading', { name: `${fact.a} × ${fact.b} = ?` })).toBeVisible();
 });

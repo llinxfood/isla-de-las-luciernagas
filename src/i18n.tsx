@@ -8,7 +8,7 @@ const LANGUAGE_KEY = 'luciernagas.language';
 const es = {
   playTimeTitle: 'Tiempo para jugar',
   playTimeDescription:
-    'Solo cuenta el tiempo en los retos y al elegir el premio. Ajustes, descansos y pestañas ocultas no cuentan. El límite se renueva al empezar un nuevo día.',
+    'El límite inicial es de 20 minutos al día. Solo cuenta el tiempo en los retos y al elegir el premio. Ajustes, descansos y pestañas ocultas no cuentan. El límite se renueva al empezar un nuevo día.',
   dailyLimit: 'Activar límite diario',
   minutesPerDay: 'Minutos al día (5–120)',
   newParentPin: 'Crea un PIN de acompañante (4 cifras)',
@@ -246,7 +246,7 @@ export type TextKey = {
 const en: Strings = {
   playTimeTitle: 'Time to play',
   playTimeDescription:
-    'Only challenges and choosing a reward count. Settings, rest screens and hidden tabs do not count. The allowance renews at the start of a new day.',
+    'The initial limit is 20 minutes per day. Only challenges and choosing a reward count. Settings, rest screens and hidden tabs do not count. The allowance renews at the start of a new day.',
   dailyLimit: 'Enable daily limit',
   minutesPerDay: 'Minutes per day (5–120)',
   newParentPin: 'Create a grown-up PIN (4 digits)',

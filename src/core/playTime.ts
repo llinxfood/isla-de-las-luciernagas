@@ -1,28 +1,39 @@
 import type { Progress } from './model';
 
+export const DEFAULT_DAILY_MINUTES = 20;
+export type ParentPin = { salt: string; hash: string };
 export type PlayTime = {
   dailyMinutes: number; // 0 disables the limit but preserves today's usage.
   day: string;
   usedMs: number;
-  pin: { salt: string; hash: string };
+  pin?: ParentPin;
 };
 export function localDay(now: number): string {
   const date = new Date(now);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+export function defaultPlayTime(now: number): PlayTime {
+  return { dailyMinutes: DEFAULT_DAILY_MINUTES, day: localDay(now), usedMs: 0 };
+}
+/** Add the default allowance to historical saves, preserving every existing field and override. */
+export function migratePlayTime(progress: Progress, now: number): Progress {
+  return progress.playTime ? progress : { ...progress, playTime: defaultPlayTime(now) };
 }
 export function usedToday(time: PlayTime, now: number): number {
   // Moving the clock backwards must not grant a fresh allowance.
   return localDay(now) > time.day ? 0 : time.usedMs;
 }
 export function remainingPlayMs(progress: Progress, now: number): number {
-  const time = progress.playTime;
-  return time?.dailyMinutes
+  const time = progress.playTime ?? defaultPlayTime(now);
+  return time.dailyMinutes
     ? Math.max(0, time.dailyMinutes * 60_000 - usedToday(time, now))
     : Infinity;
 }
 export function recordPlayTime(progress: Progress, elapsedMs: number, now: number): Progress {
-  const time = progress.playTime;
-  if (!time || !time.dailyMinutes || !Number.isFinite(elapsedMs) || elapsedMs < 0) return progress;
+  if (!Number.isFinite(elapsedMs) || elapsedMs < 0) return progress;
+  progress = migratePlayTime(progress, now);
+  const time = progress.playTime!;
+  if (!time.dailyMinutes) return progress;
   const day = localDay(now) > time.day ? localDay(now) : time.day;
   const usedMs = Math.min(
     86_400_000,
@@ -47,10 +58,11 @@ export function isPlayTime(value: unknown): value is PlayTime {
     Number.isSafeInteger(time.usedMs) &&
     time.usedMs >= 0 &&
     time.usedMs <= 86_400_000 &&
-    !!time.pin &&
-    typeof time.pin.salt === 'string' &&
-    typeof time.pin.hash === 'string' &&
-    /^[a-f0-9]{32}$/.test(time.pin.salt) &&
-    /^[a-f0-9]{64}$/.test(time.pin.hash)
+    (time.pin === undefined
+      ? time.dailyMinutes === DEFAULT_DAILY_MINUTES
+      : typeof time.pin.salt === 'string' &&
+        typeof time.pin.hash === 'string' &&
+        /^[a-f0-9]{32}$/.test(time.pin.salt) &&
+        /^[a-f0-9]{64}$/.test(time.pin.hash))
   );
 }

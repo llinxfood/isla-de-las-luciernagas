@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { legacySave } from '../../tests/fixtures/progress-v1';
 import { gameReducer } from './game';
 import { freshProgress, type Progress } from './model';
-import { isPlayTime, localDay, recordPlayTime, remainingPlayMs } from './playTime';
+import { isPlayTime, localDay, migratePlayTime, recordPlayTime, remainingPlayMs } from './playTime';
 import { createBackup, isProgress, parseBackup } from './storage';
 import { checkParentPin, createParentPin } from '../components/parentPin';
 const now = new Date(2026, 9, 3, 12).getTime();
@@ -13,9 +13,25 @@ const limited = (usedMs = 0): Progress => ({
 });
 
 describe('límite diario y conservación de partidas', () => {
-  it('abre partidas históricas sin activar ningún límite', () => {
-    expect(remainingPlayMs(parseBackup(legacySave), now)).toBe(Infinity);
-    expect(recordPlayTime(freshProgress(), 1000, now)).toEqual(freshProgress());
+  it('migra partidas históricas a 20 minutos sin tocar el progreso ni reconfigurar límites existentes', () => {
+    const legacy = parseBackup(legacySave);
+    const migrated = migratePlayTime(legacy, now);
+    expect(migrated).toEqual({
+      ...legacy,
+      playTime: { dailyMinutes: 20, day: localDay(now), usedMs: 0 },
+    });
+    expect(remainingPlayMs(legacy, now)).toBe(1200000);
+    expect(freshProgress(now).playTime?.dailyMinutes).toBe(20);
+    expect(recordPlayTime(legacy, 1000, now).playTime?.usedMs).toBe(1000);
+    expect(migratePlayTime(migrated, now)).toBe(migrated);
+    const configured = limited(1000);
+    expect(migratePlayTime(configured, now)).toBe(configured);
+    expect(isProgress(migrated)).toBe(true);
+    expect(isProgress({ ...migrated, playTime: { ...migrated.playTime, dailyMinutes: 30 } })).toBe(
+      false,
+    );
+    const disabled = { ...configured, playTime: { ...configured.playTime!, dailyMinutes: 0 } };
+    expect(migratePlayTime(disabled, now)).toBe(disabled);
   });
   it('acumula tiempo y se detiene exactamente en el límite conservando toda la expedición', () => {
     const original = limited(299000);

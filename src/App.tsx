@@ -1,6 +1,6 @@
 import { ParentGate, PlayTimeSettings } from './components/PlayTimeSettings';
 import { usePlayTime } from './components/usePlayTime';
-import { remainingPlayMs } from './core/playTime';
+import { migratePlayTime, remainingPlayMs } from './core/playTime';
 import { useEffect, useReducer, useRef, useState, type ReactNode } from 'react';
 import { gameReducer } from './core/game';
 import {
@@ -20,7 +20,8 @@ import { LanguageToggle, useI18n } from './i18n';
 type StoragePort = Pick<Storage, 'getItem' | 'setItem'>;
 function initialState(storage: StoragePort) {
   try {
-    return loadProgress(storage);
+    const loaded = loadProgress(storage);
+    return { ...loaded, progress: migratePlayTime(loaded.progress, Date.now()) };
   } catch {
     return { progress: freshProgress(), protectedSave: false, warning: 'no-storage' };
   }
@@ -557,7 +558,7 @@ export default function App({
                 progress={progress}
                 protectedSave={protectedSave}
                 onRestore={(restored) => {
-                  dispatch({ type: 'restore', progress: restored });
+                  dispatch({ type: 'restore', progress: migratePlayTime(restored, Date.now()) });
                   setProtectedSave(false);
                   setWarning(null);
                   setScreen('island');
